@@ -32,7 +32,7 @@ export async function POST(
     }
 
     // Check if competition is open
-    if (competition.status !== 'open') {
+    if (competition.deadlineToApply && new Date(competition.deadlineToApply) <= new Date()) {
       return NextResponse.json({ error: 'Competition is not open for applications' }, { status: 400 });
     }
 

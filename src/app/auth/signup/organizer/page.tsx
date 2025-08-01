@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 interface FormData {
   name: string;
@@ -30,13 +31,34 @@ interface FormErrors {
 }
 
 const positionOptions = [
-  { value: 'professor', label: 'Professor' },
-  { value: 'assistant-professor', label: 'Assistant Professor' },
-  { value: 'lecturer', label: 'Lecturer' },
-  { value: 'lab-instructor', label: 'Lab Instructor' },
-  { value: 'teaching-assistant', label: 'Teaching Assistant' },
-  { value: 'other', label: 'Other' },
+  // Teaching Roles
+  { value: 'Professor', label: 'Professor' },
+  { value: 'Assistant Professor', label: 'Assistant Professor' },
+  { value: 'Lecturer', label: 'Lecturer' },
+  { value: 'Lab Instructor', label: 'Lab Instructor' },
+  { value: 'Teaching Assistant', label: 'Teaching Assistant' },
+
+  // Organizing/Admin Roles
+  { value: 'Event Coordinator', label: 'Event Coordinator' },
+  { value: 'Faculty Advisor', label: 'Faculty Advisor' },
+  { value: 'Organizing Committee Member', label: 'Organizing Committee Member' },
+  { value: 'Department Representative', label: 'Department Representative' },
+  { value: 'Sponsor Representative', label: 'Sponsor Representative' },
+  { value: 'Volunteer Supervisor', label: 'Volunteer Supervisor' },
+
+  // Senior/Supervisory Roles
+  { value: 'Head Of Department', label: 'Head Of Department' },
+  { value: 'Event Head', label: 'Event Head' },
+  { value: 'Program Director', label: 'Program Director' },
+  { value: 'Competition Officer', label: 'Competition Officer' },
+  { value: 'Coach', label: 'Coach' },
+  { value: 'Mentor', label: 'Mentor' },
+  { value: 'Judge', label: 'Judge' },
+
+  // Miscellaneous
+  { value: 'Other', label: 'Other' }
 ];
+
 
 export default function OrganizerSignupPage() {
   const router = useRouter();
@@ -52,6 +74,10 @@ export default function OrganizerSignupPage() {
     phone: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  const [secretCode, setSecretCode] = useState('');
+  const [secretCodeError, setSecretCodeError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [customPosition, setCustomPosition] = useState('');
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({
@@ -86,17 +112,11 @@ export default function OrganizerSignupPage() {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
     if (!formData.department) {
       newErrors.department = 'Department is required';
     }
 
-    if (!formData.position) {
+    if (!formData.position || (formData.position === 'Other' && !customPosition.trim())) {
       newErrors.position = 'Position is required';
     }
 
@@ -115,6 +135,16 @@ export default function OrganizerSignupPage() {
       return;
     }
 
+    if (secretCode.trim()) {
+      // Check secret code validity
+      const res = await fetch(`/api/organizations?secretCode=${encodeURIComponent(secretCode.trim())}`);
+      const data = await res.json();
+      if (!res.ok || !data.organizations || data.organizations.length === 0) {
+        setSecretCodeError('Invalid secret code. Please check and try again.');
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
@@ -128,7 +158,7 @@ export default function OrganizerSignupPage() {
           email: formData.email,
           password: formData.password,
           department: formData.department,
-          position: formData.position,
+          position: formData.position === 'Other' ? customPosition : formData.position,
           phone: formData.phone,
         }),
       });
@@ -180,6 +210,16 @@ export default function OrganizerSignupPage() {
     } finally {
       setIsGoogleLoading(false);
     }
+  };
+
+  // Password validation logic
+  const password = formData.password;
+  const passwordChecks = {
+    lower: /[a-z]/.test(password),
+    upper: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+    length: password.length >= 8,
   };
 
   return (
@@ -264,29 +304,81 @@ export default function OrganizerSignupPage() {
             options={positionOptions}
             placeholder="Select your position"
             value={formData.position}
-            onChange={(value) => handleInputChange('position', value)}
+            onChange={(value) => {
+              handleInputChange('position', value);
+              if (value !== 'Other') setCustomPosition('');
+            }}
             error={errors.position}
             required
           />
+          {formData.position === 'Other' && (
+            <Input
+              label="Custom Position"
+              type="text"
+              placeholder="Enter your position"
+              value={customPosition}
+              onChange={e => setCustomPosition(e.target.value)}
+              error={errors.position}
+              required
+            />
+          )}
+
+          {/* Password Field with Eye Icon */}
+          <div className="relative">
+            <Input
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Create a strong password"
+              value={formData.password}
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              error={errors.password}
+              required
+              //style={{ fontSize: '1.2rem', letterSpacing: '0.1em' }}
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+              tabIndex={-1}
+              onClick={() => setShowPassword(v => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{ background: 'none', border: 'none', padding: 0 }}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+          <div className="mt-2 mb-4">
+            <div className="font-semibold text-sm mb-1">Password must contain:</div>
+            <ul className="text-sm space-y-1">
+              <li className="flex items-center gap-2">
+                {passwordChecks.lower ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.lower ? 'text-green-700' : 'text-red-600'}>At least one lowercase letter</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.upper ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.upper ? 'text-green-700' : 'text-red-600'}>At least one uppercase letter</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.number ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.number ? 'text-green-700' : 'text-red-600'}>At least one number</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.special ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.special ? 'text-green-700' : 'text-red-600'}>At least one special character</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.length ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.length ? 'text-green-700' : 'text-red-600'}>Minimum 8 characters</span>
+              </li>
+            </ul>
+          </div>
 
           <Input
-            label="Password"
-            type="password"
-            placeholder="Create a strong password"
-            value={formData.password}
-            onChange={(e) => handleInputChange('password', e.target.value)}
-            error={errors.password}
-            required
-          />
-
-          <Input
-            label="Confirm Password"
-            type="password"
-            placeholder="Confirm your password"
-            value={formData.confirmPassword}
-            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-            error={errors.confirmPassword}
-            required
+            label="Organization Secret Code (Optional)"
+            type="text"
+            placeholder="Enter secret code to join an organization"
+            value={secretCode}
+            onChange={e => { setSecretCode(e.target.value); setSecretCodeError(''); }}
+            error={secretCodeError}
           />
 
           <Button

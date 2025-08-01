@@ -45,6 +45,8 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
         position: session.user.position || '',
         educationLevel: session.user.educationLevel || '',
         website: session.user.website || '',
+        logo: session.user.logo || '',
+        createdAt: session.user.createdAt || '',
       });
     }
   }, [session]);
@@ -65,24 +67,59 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
         position: session.user.position || '',
         educationLevel: session.user.educationLevel || '',
         website: session.user.website || '',
+        logo: session.user.logo || '',
+        createdAt: session.user.createdAt || '',
       });
     }
   };
 
   const handleSave = async () => {
     setIsLoading(true);
+    // Validation for organization required fields
+    if (role === 'organization') {
+      if (!editData.name?.trim() || !editData.email?.trim() || !editData.website?.trim() || !editData.logo) {
+        toast.error('Name, Email, Website, and Logo are required.');
+        setIsLoading(false);
+        return;
+      }
+    }
     try {
+      let logoFilename = editData.logo;
+      // If logo is a File, upload it first
+      if (role === 'organization' && editData.logo && typeof editData.logo !== 'string') {
+        const formData = new FormData();
+        formData.append('logo', editData.logo);
+        // Always use session.user.id as organizationId for logo filename
+        const orgId = session?.user?.id;
+        if (!orgId) {
+          toast.error('Organization ID is missing.');
+          setIsLoading(false);
+          return;
+        }
+        formData.append('organizationId', String(orgId));
+        const uploadRes = await fetch('/api/organization/upload-logo', {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadRes.ok && uploadData.path) {
+          logoFilename = `/Org-Logos/${orgId}.png`;
+        } else {
+          toast.error(uploadData.error || 'Failed to upload logo');
+          setIsLoading(false);
+          return;
+        }
+      }
+      const payload = { ...editData, logo: logoFilename };
       const response = await fetch(`/api/${role}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editData),
+        body: JSON.stringify(payload),
       });
-
       if (response.ok) {
         const updatedUser = await response.json();
-        // Update the session with new data
         await update({
           ...session,
           user: {
@@ -90,7 +127,6 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
             ...updatedUser.user,
           },
         });
-        
         toast.success('Profile updated successfully!');
         setIsEditing(false);
       } else {
@@ -107,6 +143,13 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
 
   const handleInputChange = (field: string, value: string) => {
     setEditData((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditData((prev: any) => ({ ...prev, logo: file }));
+    }
   };
 
   const educationLevelOptions = [
@@ -167,12 +210,37 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
           )}
 
           {role === 'organization' && (
-            <Input
-              label="Website"
-              value={editData.website}
-              onChange={(e) => handleInputChange('website', e.target.value)}
-              placeholder="Enter organization website"
-            />
+            <>
+              <Input
+                label="Website"
+                value={editData.website}
+                onChange={(e) => handleInputChange('website', e.target.value)}
+                placeholder="Enter organization website"
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {editData.logo && typeof editData.logo !== 'string' && (
+                  <img
+                    src={URL.createObjectURL(editData.logo)}
+                    alt="Logo Preview"
+                    className="mt-2 h-16 w-16 object-contain rounded border"
+                  />
+                )}
+                {editData.logo && typeof editData.logo === 'string' && (
+                  <img
+                    src={editData.logo}
+                    alt="Logo Preview"
+                    className="mt-2 h-16 w-16 object-contain rounded border"
+                  />
+                )}
+              </div>
+            </>
           )}
         </div>
       );
@@ -180,14 +248,37 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
 
     return (
       <div className="space-y-3">
-        <div>
-          <p className="text-sm text-gray-600">Name</p>
-          <p className="font-medium">{session?.user?.name}</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-600">Email</p>
-          <p className="font-medium">{session?.user?.email}</p>
-        </div>
+        {role === 'organization' && (
+          <>
+            <div className="flex items-center gap-3 mb-3">
+              {session?.user?.logo && (
+                <img
+                  src={session?.user?.logo.startsWith('/') ? session.user.logo : `/Org-Logos/${session.user.logo}`}
+                  alt="Logo"
+                  className="h-16 w-16 object-contain rounded border bg-gray-50"
+                />
+              )}
+              <div>
+                <p className="text-xs text-gray-500">Registered since</p>
+                <p className="font-semibold text-gray-900">{session?.user?.createdAt ? new Date(session.user.createdAt).toLocaleDateString() : 'N/A'}</p>
+              </div>
+            </div>
+            <div className="mb-2">
+              <a 
+                href={session?.user?.website} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 hover:text-blue-800"
+              >
+                {session?.user?.website}
+              </a>
+            </div>
+            <div className="mb-2">
+              <p className="font-medium text-gray-900">{session?.user?.email}</p>
+            </div>
+            </>
+        )}
+        
         
         {role === 'organizer' && (
           <>
@@ -227,29 +318,6 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
           </>
         )}
 
-        {role === 'organization' && (
-          <>
-            {session?.user?.website && (
-              <div>
-                <p className="text-sm text-gray-600">Website</p>
-                <a 
-                  href={session.user.website} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="font-medium text-blue-600 hover:text-blue-800"
-                >
-                  {session.user.website}
-                </a>
-              </div>
-            )}
-            <div>
-              <p className="text-sm text-gray-600">Secret Code</p>
-              <p className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                {session?.user?.secretCode || 'N/A'}
-              </p>
-            </div>
-          </>
-        )}
       </div>
     );
   };
@@ -269,7 +337,7 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Profile</h3>
+            <h3 className="text-lg font-medium text-gray-900">{session?.user?.name}</h3>
             <div className="flex items-center space-x-2">
               {!isEditing ? (
                 <button

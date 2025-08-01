@@ -45,7 +45,8 @@ const CATEGORIES = [
   { value: 'Social', label: 'Social' },
   { value: 'Computing', label: 'Computing' },
   { value: 'Business', label: 'Business' },
-  { value: 'Sports', label: 'Sports' }
+  { value: 'Sports', label: 'Sports' },
+  { value: 'Other', label: 'Other' }
 ];
 
 const MODES = [
@@ -104,6 +105,11 @@ export default function AddCompetition() {
       teamSize: {
         min: 1,
         max: 4
+      },
+      accountDetails: {
+        name: '',
+        number: '',
+        type: ''
       }
     }
   });
@@ -288,6 +294,11 @@ export default function AddCompetition() {
         if (!data.teamSize?.max || data.teamSize.max < data.teamSize.min) {
           console.log('Frontend validation failed: max < min');
           toast.error('Maximum team size must be greater than or equal to minimum team size');
+          return;
+        }
+        if (data.registrationFee < 0) {
+          console.log('Frontend validation failed: registration fee <= 0');
+          toast.error('Registration fee must be greater than 0');
           return;
         }
         console.log('Frontend validation passed');
@@ -605,6 +616,7 @@ export default function AddCompetition() {
                   label="Registration Fee"
                   step={500}
                   min={0}
+                  value={registrationFee}
                   {...register('registrationFee', { 
                     min: { 
                       value: 0, 
@@ -612,6 +624,10 @@ export default function AddCompetition() {
                     }
                   })}
                   error={errors.registrationFee?.message}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    setValue('registrationFee', value);
+                  }}
                 />
 
                 {/* Only show payment verification and account details if registration fee > 0 */}
@@ -624,7 +640,7 @@ export default function AddCompetition() {
                         className="h-4 w-4 text-blue-600 rounded border-gray-300"
                       />
                       <label className="ml-2 text-sm text-gray-700">
-                        Require Payment Verification
+                        Require Receipt(img) and Transaction ID
                       </label>
                     </div>
 
@@ -634,18 +650,24 @@ export default function AddCompetition() {
                         <Input
                           label="Account Name"
                           placeholder="Enter account holder name"
-                          {...register('accountDetails.name')}
+                          {...register('accountDetails.name', {
+                            required: 'Account name is required'
+                          })}
                         />
                         <Input
                           label="Account Number"
                           placeholder="Enter account number"
-                          {...register('accountDetails.number')}
+                          {...register('accountDetails.number', {
+                            required: 'Account number is required'
+                          })}
                         />
                       </div>
                       <Input
                         label="Account Type"
                         placeholder="e.g., JazzCash, Easypaisa, Bank Name"
-                        {...register('accountDetails.type')}
+                        {...register('accountDetails.type', {
+                        required: 'Account type is required'
+                        })}
                       />
                     </div>
                   </div>

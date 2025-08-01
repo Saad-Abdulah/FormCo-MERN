@@ -31,6 +31,8 @@ interface Application {
     name: string;
     email: string;
   };
+  attended?: boolean;
+  accepted?: 'pending' | 'accepted' | 'rejected';
 }
 
 interface Competition {
@@ -55,7 +57,7 @@ interface Competition {
 }
 
 export default function ApplicationDetailsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const params = useParams();
   const router = useRouter();
   const [application, setApplication] = useState<Application | null>(null);
@@ -92,20 +94,50 @@ export default function ApplicationDetailsPage() {
     }
   };
 
+  // Update attendance
+  const updateAttendance = async (attended: boolean) => {
+    try {
+      const response = await fetch(`/api/competitions/${params.id}/applications/${params.application}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attended }),
+      });
+      if (!response.ok) throw new Error('Failed to update attendance');
+      setApplication(app => app ? { ...app, attended } : app);
+      toast.success(attended ? 'Marked as Present' : 'Marked as Absent');
+    } catch (e) { toast.error('Failed to update attendance'); }
+  };
+
+  // Update accepted status
+  const updateAccepted = async (accepted: 'pending' | 'accepted' | 'rejected') => {
+    console.log(accepted);
+    try {
+      const response = await fetch(`/api/competitions/${params.id}/applications/${params.application}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accepted }),
+      });
+      if (!response.ok) throw new Error('Failed to update status');
+      setApplication(app => app ? { ...app, accepted } : app);
+      toast.success(accepted === 'accepted' ? 'Marked as Accepted' : accepted === 'rejected' ? 'Marked as Rejected' : 'Set to Pending');
+    } catch (e) { toast.error('Failed to update status'); }
+  };
+
   useEffect(() => {
-    if (!session) {
+    if (status === 'loading') return;
+
+    if (status === 'unauthenticated' || !session) {
       router.push('/auth/signin');
       return;
     }
 
-    // Allow all authenticated users to view applications for now (for testing)
     if (session.user?.role !== 'organizer' && session.user?.role !== 'organization' && session.user?.role !== 'student') {
       router.push('/');
       return;
     }
 
     fetchApplicationDetails();
-  }, [session, params.id, params.application]);
+  }, [session, status, params.id, params.application, router]);
 
   const fetchApplicationDetails = async () => {
     try {
@@ -267,6 +299,41 @@ export default function ApplicationDetailsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Submitted By</label>
                 <p className="mt-1 text-sm text-gray-900">{application.student.name} ({application.student.email})</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Attendance</label>
+                <p className="mt-1 text-sm text-gray-900">
+                  {application.attended ? 'Present' : 'Absent'}
+                  {(session?.user?.role === 'organizer' || session?.user?.role === 'organization') && (
+                    <button
+                      onClick={() => updateAttendance(!application.attended)}
+                      className={`ml-3 px-3 py-1 rounded text-xs font-medium ${application.attended ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+                    >
+                      Mark as {application.attended ? 'Absent' : 'Present'}
+                    </button>
+                  )}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Status</label>
+                <p className="mt-1 text-sm text-gray-900">
+                  {application.accepted === 'accepted' && <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">Accepted</span>}
+                  {application.accepted === 'rejected' && <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium">Rejected</span>}
+                  {(!application.accepted || application.accepted === 'pending') && <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">Pending</span>}
+                  {(session?.user?.role === 'organizer' || session?.user?.role === 'organization') && (
+                    <span className="ml-3">
+                      <select
+                        value={application. accepted|| 'pending'}
+                        onChange={e => updateAccepted(e.target.value as 'pending' | 'accepted' | 'rejected')}
+                        className="px-2 py-1 rounded border text-xs font-medium"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
           </div>

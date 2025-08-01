@@ -2,15 +2,20 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import AddOrganizerDropdown from '@/components/AddOrganizerDropdown';
 import SecretCodeDropdown from '@/components/SecretCodeDropdown';
+import { FaTrophy, FaUsers, FaUserTie } from 'react-icons/fa';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function OrganizationDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  const [stats, setStats] = useState({ competitions: 0, applicants: 0, organizers: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     if (status === 'loading') return; // Still loading
@@ -27,12 +32,62 @@ export default function OrganizationDashboard() {
     }
   }, [session, status, router]);
 
+  useEffect(() => {
+    if (status !== 'authenticated' || !session?.user) return;
+    async function fetchStats() {
+      setStatsLoading(true);
+      try {
+        // 1. Fetch competitions
+        const compsRes = await fetch('/api/competitions');
+        if (!compsRes.ok) {
+          throw new Error(`Failed to fetch competitions: ${compsRes.status}`);
+        }
+        const compsData = await compsRes.json();
+        const competitions = compsData.competitions || [];
+        
+        // 2. Fetch organizers
+        const orgRes = await fetch('/api/organization/organizers');
+        if (!orgRes.ok) {
+          throw new Error(`Failed to fetch organizers: ${orgRes.status}`);
+        }
+        const orgData = await orgRes.json();
+        const organizers = orgData.organizers || [];
+        
+        // 3. Fetch applicants for each competition
+        let applicants = 0;
+        if (competitions.length > 0) {
+          const applicantCounts = await Promise.allSettled(
+            competitions.map(async (comp: any) => {
+              try {
+                const appsRes = await fetch(`/api/competitions/${comp._id}/applications`);
+                if (appsRes.ok) {
+                  const appsData = await appsRes.json();
+                  return appsData.applications?.length || 0;
+                }
+                return 0;
+              } catch {
+                return 0;
+              }
+            })
+          );
+          applicants = applicantCounts
+            .filter(result => result.status === 'fulfilled')
+            .reduce((sum, result) => sum + (result as PromiseFulfilledResult<number>).value, 0);
+        }
+        
+        setStats({ competitions: competitions.length, applicants, organizers: organizers.length });
+      } catch (e) {
+        console.error('Error fetching stats:', e);
+        setStats({ competitions: 0, applicants: 0, organizers: 0 });
+      } finally {
+        setStatsLoading(false);
+      }
+    }
+    fetchStats();
+  }, [status, session]);
+
   if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading organization dashboard..." />;
   }
 
   if (!session || session.user?.role !== 'organization') {
@@ -75,6 +130,24 @@ export default function OrganizationDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+            <FaTrophy className="text-blue-500 w-8 h-8 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">Competitions</h3>
+            <p className="text-3xl font-bold text-blue-600 mt-2">{statsLoading ? '...' : stats.competitions}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+            <FaUsers className="text-green-500 w-8 h-8 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">Applicants</h3>
+            <p className="text-3xl font-bold text-green-600 mt-2">{statsLoading ? '...' : stats.applicants}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+            <FaUserTie className="text-purple-500 w-8 h-8 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">Organizers</h3>
+            <p className="text-3xl font-bold text-purple-600 mt-2">{statsLoading ? '...' : stats.organizers}</p>
+          </div>
+        </div>
         <div className="flex flex-col items-center space-y-3 mb-6">
           <Button 
             onClick={() => router.push('/events')}

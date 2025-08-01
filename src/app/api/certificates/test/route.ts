@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createCanvas, loadImage, registerFont } from 'canvas';
+import { createCanvas, registerFont } from 'canvas';
 import fs from 'fs';
 import path from 'path';
 

@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -11,6 +11,9 @@ import AddOrganizationDropdown from '@/components/AddOrganizationDropdown';
 import OrganizationSwitcher from '@/components/OrganizationSwitcher';
 import { RiGlobalLine } from 'react-icons/ri';
 import { MdCreateNewFolder } from "react-icons/md";
+import { FaTrophy, FaUsers, FaUserTie } from 'react-icons/fa';
+import { useOrganization } from '@/context/OrganizationContext';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface Organization {
   _id: string;
@@ -24,17 +27,28 @@ interface Organization {
 export default function OrganizerDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { currentOrganization } = useOrganization();
   const [secretCode, setSecretCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({ competitions: 0, applicants: 0, organizers: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   const fetchOrganizations = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/organizer/organizations');
+      // Add timeout to prevent infinite loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch('/api/organizer/organizations', {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       const data = await response.json();
 
       if (!response.ok) {
@@ -114,16 +128,95 @@ export default function OrganizerDashboard() {
     fetchOrganizations();
   }, [session, status, router]);
 
+  useEffect(() => {
+    if (status !== 'authenticated' || !session?.user || !currentOrganization?.id) return;
+    async function fetchStats() {
+      setStatsLoading(true);
+      try {
+        // Fetch competitions for current organization
+        const compsRes = await fetch(`/api/competitions?organizationId=${currentOrganization?.id || ''}`);
+        if (!compsRes.ok) {
+          throw new Error(`Failed to fetch competitions: ${compsRes.status}`);
+        }
+        const compsData = await compsRes.json();
+        const competitions = compsData.competitions || [];
+        
+        // Fetch organizers for current organization
+        const orgRes = await fetch(`/api/organization/organizers?id=${currentOrganization?.id || ''}`);
+        if (!orgRes.ok) {
+          throw new Error(`Failed to fetch organizers: ${orgRes.status}`);
+        }
+        const orgData = await orgRes.json();
+        const organizers = orgData.organizers || [];
+        
+        // Fetch applicants for each competition
+        let applicants = 0;
+        if (competitions.length > 0) {
+          const applicantCounts = await Promise.allSettled(
+            competitions.map(async (comp: any) => {
+              try {
+                const appsRes = await fetch(`/api/competitions/${comp._id}/applications`);
+                if (appsRes.ok) {
+                  const appsData = await appsRes.json();
+                  return appsData.applications?.length || 0;
+                }
+                return 0;
+              } catch {
+                return 0;
+              }
+            })
+          );
+          applicants = applicantCounts
+            .filter(result => result.status === 'fulfilled')
+            .reduce((sum, result) => sum + (result as PromiseFulfilledResult<number>).value, 0);
+        }
+        
+        setStats({ competitions: competitions.length, applicants, organizers: organizers.length });
+      } catch (e) {
+        console.error('Error fetching stats:', e);
+        setStats({ competitions: 0, applicants: 0, organizers: 0 });
+      } finally {
+        setStatsLoading(false);
+      }
+    }
+    fetchStats();
+  }, [status, session, currentOrganization]);
+
+  // Fetch competitions for current organization only for stats
+  const [orgCompetitions, setOrgCompetitions] = useState<any[]>([]);
+  useEffect(() => {
+    if (!currentOrganization) return;
+    async function fetchOrgCompetitions() {
+      try {
+        const res = await fetch(`/api/competitions?organization=${currentOrganization?.id || ''}`);
+        const data = await res.json();
+        setOrgCompetitions(data.competitions || []);
+      } catch {
+        setOrgCompetitions([]);
+      }
+    }
+    fetchOrgCompetitions();
+  }, [currentOrganization]);
+
   if (status === 'loading' || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading organizer dashboard..." />;
   }
 
   if (!session || session.user?.role !== 'organizer') {
     return null;
+  }
+
+  // Show a message if no organization is selected
+  if (!currentOrganization) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">No Organization Selected</h2>
+          <p className="text-gray-600 mb-6">Please select an organization to view your dashboard.</p>
+          <OrganizationSwitcher />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -137,7 +230,8 @@ export default function OrganizerDashboard() {
               <p className="text-sm text-gray-600">Welcome back, {session.user?.name}</p>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="transform hover:scale-110 transition-transform duration-200">
+              {/* <div className="transform hover:scale-110 transition-transform duration-200"> */}
+              <div>
                 <OrganizationSwitcher />
               </div>
               <div className="transform hover:scale-110 transition-transform duration-200">
@@ -154,54 +248,31 @@ export default function OrganizerDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col items-center space-y-3 mb-6">
-          <div className="flex flex-col items-center space-y-2">
-            <Button 
-              onClick={() => router.push('/events')}
-              className="bg-blue-600 hover:bg-blue-700 text-white w-48"
-              size="sm"
-              disabled={organizations.length === 0}
-            >
-              Check out Events
-            </Button>
-            {organizations.length === 0 && !error && (
-              <span className="text-sm text-gray-500">
-                Join an organization first to access events
-              </span>
-            )}
-            {error && (
-              <span className="text-sm text-red-500">
-                {error}
-              </span>
-            )}
-          </div>
-
-          {organizations.map((org) => org.website && (
-            <Button
-              key={org._id}
-              onClick={() => window.open(org.website, '_blank')}
-              variant="outline"
-              size="sm"
-              className="text-gray-600 hover:text-gray-800 w-48 flex items-center justify-center gap-2"
-            >
-              <RiGlobalLine className="h-4 w-4" />
-              Visit {org.name}
-            </Button>
-          ))}
+          <Button
+            onClick={() => { if (currentOrganization) router.push(`/events?organizationId=${currentOrganization.id}`); }}
+            className="bg-blue-600 hover:bg-blue-700 text-white w-48"
+            size="sm"
+            disabled={!currentOrganization}
+          >
+            Check out Events
+          </Button>
         </div>
-
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900">Organizations Joined</h3>
-            <p className="text-3xl font-bold text-blue-600 mt-2">{organizations.length}</p>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+            <FaTrophy className="text-blue-500 w-8 h-8 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">Competitions</h3>
+            <p className="text-3xl font-bold text-blue-600 mt-2">{statsLoading ? '...' : stats.competitions}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900">Active Events</h3>
-            <p className="text-3xl font-bold text-green-600 mt-2">0</p>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+            <FaUsers className="text-green-500 w-8 h-8 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">Applicants</h3>
+            <p className="text-3xl font-bold text-green-600 mt-2">{statsLoading ? '...' : stats.applicants}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900">Total Participants</h3>
-            <p className="text-3xl font-bold text-yellow-600 mt-2">0</p>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+            <FaUserTie className="text-purple-500 w-8 h-8 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">Organizers</h3>
+            <p className="text-3xl font-bold text-purple-600 mt-2">{statsLoading ? '...' : stats.organizers}</p>
           </div>
         </div>
 

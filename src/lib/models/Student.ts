@@ -46,7 +46,7 @@ const StudentSchema = new Schema<IStudent>({
   organizationId: {
     type: Schema.Types.ObjectId,
     ref: 'Organization',
-    required: true,
+    // required: true,
   },
   educationLevel: {
     type: String,

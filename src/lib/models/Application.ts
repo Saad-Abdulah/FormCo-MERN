@@ -32,6 +32,8 @@ export interface IApplication extends Document {
   // Additional fields
   additionalInfo?: Record<string, any>;
   notes?: string;
+  attended?: boolean;
+  accepted?: 'pending' | 'accepted' | 'rejected';
 }
 
 const ApplicationSchema = new Schema<IApplication>({
@@ -115,6 +117,15 @@ const ApplicationSchema = new Schema<IApplication>({
     type: String,
     trim: true,
   },
+  attended: {
+    type: Boolean,
+    default: false,
+  },
+  accepted: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected'],
+    default: 'pending',
+  },
 }, {
   timestamps: true,
 });
@@ -124,6 +135,8 @@ ApplicationSchema.index({ competition: 1, student: 1 }, { unique: true });
 ApplicationSchema.index({ competition: 1 });
 ApplicationSchema.index({ student: 1 });
 ApplicationSchema.index({ paymentVerified: 1 });
+ApplicationSchema.index({ accepted: 1 });
+ApplicationSchema.index({ attended: 1 });
 
 // Middleware to set payment and verification status
 ApplicationSchema.pre('save', async function(next) {

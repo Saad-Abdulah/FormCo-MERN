@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       email: email.toLowerCase(),
       password: hashedPassword,
       website,
-      logo,
+      logo: logo || undefined,
       isEmailVerified: true, // Set to true for testing (skip email verification)
       secretCode, // Explicitly set the secret code
     });

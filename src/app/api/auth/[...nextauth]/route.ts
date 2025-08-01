@@ -31,6 +31,8 @@ interface CustomUser {
   phone?: string;
   website?: string;
   isApproved?: boolean;
+  logo?: string;
+  createdAt?: string;
 }
 
 declare module 'next-auth' {
@@ -54,6 +56,8 @@ declare module 'next-auth/jwt' {
     phone?: string;
     website?: string;
     isApproved?: boolean;
+    logo?: string;
+    createdAt?: string;
   }
 }
 
@@ -125,6 +129,8 @@ export const authOptions: NextAuthOptions = {
             userObj.secretCode = user.secretCode;
             userObj.website = user.website;
             userObj.organizationId = user._id.toString();
+            userObj.logo = user.logo;
+            userObj.createdAt = user.createdAt?.toISOString?.() || '';
           } else if (role === 'student') {
             const orgId = user.organizationId?._id || user.organizationId;
             userObj.organizationId = orgId?.toString();
@@ -164,6 +170,8 @@ export const authOptions: NextAuthOptions = {
         token.phone = user.phone;
         token.website = user.website;
         token.isApproved = user.isApproved;
+        token.logo = user.logo;
+        token.createdAt = user.createdAt;
       }
 
       // Handle session updates
@@ -187,6 +195,8 @@ export const authOptions: NextAuthOptions = {
         session.user.phone = token.phone;
         session.user.website = token.website;
         session.user.isApproved = token.isApproved;
+        session.user.logo = token.logo;
+        session.user.createdAt = token.createdAt;
       }
       return session;
     },

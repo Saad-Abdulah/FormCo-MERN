@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       country: !!country
     });
     
-    if (!name || !email || !password || !organizationId || !educationLevel || !yearOrSemester || !country) {
+    if (!name || !email || !password || !educationLevel || !yearOrSemester || !country) {
       console.log('Validation failed - missing required fields');
       return NextResponse.json(
         { error: 'All required fields must be provided' },
@@ -56,27 +56,21 @@ export async function POST(request: NextRequest) {
     }
     console.log('No existing student found');
 
-    // Verify organization exists and is verified
-    console.log('Looking up organization with ID:', organizationId);
-    const organization = await Organization.findById(organizationId);
-    if (!organization) {
-      console.log('Organization not found');
-      return NextResponse.json(
-        { error: 'Selected organization not found' },
-        { status: 400 }
-      );
+    // If organizationId is provided, verify organization exists
+    let organization = null;
+    if (organizationId) {
+      console.log('Looking up organization with ID:', organizationId);
+      organization = await Organization.findById(organizationId);
+      if (!organization) {
+        console.log('Organization not found');
+        return NextResponse.json(
+          { error: 'Selected organization not found' },
+          { status: 400 }
+        );
+      }
+      console.log('Organization found:', organization.name);
+      // Optionally, check verification here
     }
-    console.log('Organization found:', organization.name);
-
-    // Commented out email verification check for testing
-    // if (!organization.isEmailVerified) {
-    //   console.log('Organization not verified yet');
-    //   return NextResponse.json(
-    //     { error: 'Selected organization is not verified yet' },
-    //     { status: 400 }
-    //   );
-    // }
-    console.log('Organization verification passed');
 
     // Hash password
     console.log('Hashing password...');
@@ -84,17 +78,19 @@ export async function POST(request: NextRequest) {
     console.log('Password hashed successfully');
 
     // Create new student
-    const studentData = {
+    const studentData: any = {
       name: name.trim(),
       email: email.toLowerCase(),
       password: hashedPassword,
       phone: phone?.trim() || '',
-      organizationId: organizationId, // Fixed: use organizationId instead of organization
       educationLevel,
       yearOrSemester: yearOrSemester.trim(),
       country: country.trim(),
       isGoogleAuth: false,
     };
+    if (organizationId) {
+      studentData.organizationId = organizationId;
+    }
     
     console.log('Creating student with data:', {
       ...studentData,

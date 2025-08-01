@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 interface Organization {
   id: string;
@@ -25,7 +26,6 @@ export default function StudentSignupPage() {
     name: '',
     email: '',
     password: '',
-    confirmPassword: '',
     phone: '',
     organizationId: '',
     educationLevel: '',
@@ -33,6 +33,7 @@ export default function StudentSignupPage() {
     country: 'Pakistan',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showPassword, setShowPassword] = useState(false);
 
   const educationLevelOptions = [
     { value: 'high-school', label: 'High School' },
@@ -81,14 +82,7 @@ export default function StudentSignupPage() {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    if (!formData.organizationId) {
-      newErrors.organizationId = 'Please select your institution';
-    }
-
+    // organizationId is now optional, so no validation here
     if (!formData.educationLevel) {
       newErrors.educationLevel = 'Please select your education level';
     }
@@ -151,6 +145,16 @@ export default function StudentSignupPage() {
   };
 
   const selectedOrganization = organizations.find(org => org.id === formData.organizationId);
+
+  // Password validation logic
+  const password = formData.password;
+  const passwordChecks = {
+    lower: /[a-z]/.test(password),
+    upper: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+    length: password.length >= 8,
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 flex items-center justify-center p-4">
@@ -219,7 +223,7 @@ export default function StudentSignupPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Institution
+              Institution <span className="text-gray-400 text-xs">(optional)</span>
             </label>
             <select
               value={formData.organizationId}
@@ -229,9 +233,8 @@ export default function StudentSignupPage() {
                 bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500
                 ${errors.organizationId ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}
               `}
-              required
             >
-              <option value="">Select your institution</option>
+              <option value="">Select your institution (optional)</option>
               {organizations.map((org) => (
                 <option key={org.id} value={org.id}>
                   {org.name}
@@ -240,19 +243,12 @@ export default function StudentSignupPage() {
             </select>
             {selectedOrganization && (
               <div className="mt-2 p-3 bg-gray-50 rounded-md flex items-center gap-3">
-                {selectedOrganization.logo ? (
-                  <img 
-                    src={selectedOrganization.logo} 
-                    alt={selectedOrganization.name}
-                    className="w-8 h-8 object-contain rounded"
-                  />
-                ) : (
-                  <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
-                    <span className="text-xs font-medium">
-                      {selectedOrganization.name[0]}
-                    </span>
-                  </div>
-                )}
+                <img 
+                  src={`/Org-Logos/${selectedOrganization.id}.png`}
+                  alt={selectedOrganization.name}
+                  className="w-8 h-8 object-contain rounded"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
                 <div>
                   <p className="text-sm font-medium text-gray-900">
                     {selectedOrganization.name}
@@ -265,9 +261,7 @@ export default function StudentSignupPage() {
                 </div>
               </div>
             )}
-            {errors.organizationId && (
-              <p className="mt-1 text-sm text-red-600">{errors.organizationId}</p>
-            )}
+            {/* Remove required error for organizationId */}
           </div>
 
           <Select
@@ -299,25 +293,54 @@ export default function StudentSignupPage() {
             required
           />
 
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Create a strong password"
-            value={formData.password}
-            onChange={(e) => handleInputChange('password', e.target.value)}
-            error={errors.password}
-            required
-          />
-
-          <Input
-            label="Confirm Password"
-            type="password"
-            placeholder="Confirm your password"
-            value={formData.confirmPassword}
-            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-            error={errors.confirmPassword}
-            required
-          />
+          {/* Password Field with Eye Icon */}
+          <div className="relative">
+            <Input
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Create a strong password"
+              value={formData.password}
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              error={errors.password}
+              required
+              //style={{ fontSize: '1.2rem', letterSpacing: '0.1em' }}
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+              tabIndex={-1}
+              onClick={() => setShowPassword(v => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{ background: 'none', border: 'none', padding: 0 }}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+          <div className="mt-2 mb-4">
+            <div className="font-semibold text-sm mb-1">Password must contain:</div>
+            <ul className="text-sm space-y-1">
+              <li className="flex items-center gap-2">
+                {passwordChecks.lower ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.lower ? 'text-green-700' : 'text-red-600'}>At least one lowercase letter</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.upper ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.upper ? 'text-green-700' : 'text-red-600'}>At least one uppercase letter</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.number ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.number ? 'text-green-700' : 'text-red-600'}>At least one number</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.special ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.special ? 'text-green-700' : 'text-red-600'}>At least one special character</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.length ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.length ? 'text-green-700' : 'text-red-600'}>Minimum 8 characters</span>
+              </li>
+            </ul>
+          </div>
 
           <Button
             type="submit"

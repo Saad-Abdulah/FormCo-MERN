@@ -43,7 +43,6 @@ export interface ICompetition extends Document {
     qualification: boolean;
   };
   requiredApplicationFields: string[];
-  status: 'open' | 'closed';
   mode: 'online' | 'onsite' | 'hybrid';
   location?: string;
   event?: string;
@@ -135,11 +134,6 @@ const CompetitionSchema = new Schema<ICompetition>({
     type: String,
     enum: ['name', 'email', 'institute', 'contact', 'resume', 'qualification'],
   }],
-  status: {
-    type: String,
-    enum: ['open', 'closed'],
-    default: 'open',
-  },
   mode: {
     type: String,
     enum: ['online', 'onsite', 'hybrid'],

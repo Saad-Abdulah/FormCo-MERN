@@ -576,9 +576,9 @@ export default function ApplyPage() {
       {/* Main Content */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-2">{competition?.title}</h2>
+          <h2 className="text-xl font-semibold mb-2 text-black">{competition?.title}</h2>
           <p className="text-gray-600 mb-6">{competition?.description}</p>
-
+          <h3 className="text-lg font-medium text-black mb-2">Application Details</h3>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Team Event Form */}
             {competition?.isTeamEvent ? (
@@ -631,7 +631,6 @@ export default function ApplyPage() {
             ) : (
               /* Individual Event Form */
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Application Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {competition.requiredApplicationFields.map((field) => (
                     <div key={field}>

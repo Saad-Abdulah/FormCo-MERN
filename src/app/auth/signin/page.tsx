@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function SignInPage() {
     role: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showPassword, setShowPassword] = useState(false);
 
   const roleOptions = [
     { value: 'student', label: 'Student' },
@@ -164,15 +166,29 @@ export default function SignInPage() {
             required
           />
 
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Enter your password"
-            value={formData.password}
-            onChange={(e) => handleInputChange('password', e.target.value)}
-            error={errors.password}
-            required
-          />
+          {/* Password Field with Eye Icon */}
+          <div className="relative">
+            <Input
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter your password"
+              value={formData.password}
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              error={errors.password}
+              required
+              //style={{ fontSize: '1.2rem', letterSpacing: '0.1em' }}
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+              tabIndex={-1}
+              onClick={() => setShowPassword(v => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{ background: 'none', border: 'none', padding: 0 }}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
 
           <Button
             type="submit"

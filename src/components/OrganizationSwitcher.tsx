@@ -5,10 +5,12 @@ import { useSession } from 'next-auth/react';
 import { useOrganization } from '@/context/OrganizationContext';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { RiGlobalLine } from 'react-icons/ri';
 
 interface Organization {
   id: string;
   name: string;
+  website?: string;
 }
 
 interface OrgResponse {
@@ -30,9 +32,10 @@ export default function OrganizationSwitcher() {
       const data = await response.json();
       
       if (data.organizations) {
-        const orgs = data.organizations.map((org: OrgResponse) => ({
+        const orgs = data.organizations.map((org: OrgResponse & { website?: string }) => ({
           id: org._id,
-          name: org.name
+          name: org.name,
+          website: org.website,
         }));
         setOrganizations(orgs);
         
@@ -106,12 +109,37 @@ export default function OrganizationSwitcher() {
     }
   };
 
+  // Website icon as a separate component
+  function OrganizationWebsiteButton({ website, name }: { website?: string; name?: string }) {
+    const [showTooltip, setShowTooltip] = useState(false);
+    if (!website) return null;
+    return (
+      <div className="relative mr-4 flex items-center">
+        <button
+          className="p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400 transform hover:scale-110 transition-transform duration-200"
+          title={`Visit ${name}`}
+          onClick={e => { e.stopPropagation(); window.open(website, '_blank'); }}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <RiGlobalLine className="text-blue-600" size={22} />
+        </button>
+        {showTooltip && (
+          <div className="absolute left-1/2 -translate-x-1/2 mt-17 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow z-50 whitespace-nowrap">
+            Visit {name}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (!session?.user?.role || session.user.role !== 'organizer' || organizations.length === 0) {
     return null;
   }
 
   return (
-    <div className="w-72">
+    <div className="w-72 flex items-center">
+      <OrganizationWebsiteButton website={currentOrganization?.website} name={currentOrganization?.name} />
       <Listbox value={currentOrganization} onChange={handleOrgChange} disabled={isLoading}>
         <div className="relative mt-1">
           <Listbox.Button className={`relative w-full cursor-pointer rounded-lg bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300 sm:text-sm ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>

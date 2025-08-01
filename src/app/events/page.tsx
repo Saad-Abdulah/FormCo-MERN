@@ -14,6 +14,8 @@ import { MdCreateNewFolder } from "react-icons/md";
 import { IoMdArrowBack } from "react-icons/io";
 import Image from 'next/image';
 import { format } from 'date-fns';
+import { usePathname, useSearchParams } from 'next/navigation';
+import getCompetitionStatus from '@/lib/utils/getCompetitionStatus';
 
 interface Competition {
   _id: string;
@@ -23,6 +25,8 @@ interface Competition {
   mode: string;
   status: 'open' | 'closed';
   deadlineToApply?: string;
+  startDate?: string;
+  endDate?: string;
   organizer: {
     name: string;
     position: string;
@@ -34,22 +38,34 @@ interface Competition {
   registrationFee?: number;
 }
 
-export default function EventsPage() {
+export function EventsList({ organizationId }: { organizationId?: string }) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
-  const fetchCompetitions = async () => {
+  const fetchCompetitions = async ({organizationId}: {organizationId?: string}) => {
     try {
-      const response = await fetch('/api/competitions');
+      const response = await fetch(`/api/competitions?organizationId=${organizationId}`);
       const data = await response.json();
+      console.log("data", data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch competitions');
       }
 
-      setCompetitions(data.competitions || []);
+      let comps = data.competitions || [];
+      console.log(comps);
+      console.log(organizationId);
+      if (organizationId) {
+        comps = comps.filter((c: any) => {
+          const org = c.organization;
+          return org && (org._id === organizationId || org.id === organizationId);
+        });
+      }
+      setCompetitions(comps);
     } catch (error) {
       console.error('Error fetching competitions:', error);
     } finally {
@@ -64,14 +80,25 @@ export default function EventsPage() {
       router.push('/auth/signin');
       return;
     }
-
-    fetchCompetitions();
-  }, [session, status, router]);
+    fetchCompetitions({organizationId});
+  }, [session, status, router, organizationId]);
 
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
+
+  function highlightMatch(text: string, search: string) {
+    if (!search) return text;
+    const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig');
+    return text.split(regex).map((part, i) =>
+      regex.test(part) ? <span key={i} className="bg-blue-200 px-1 rounded">{part}</span> : <span key={i}>{part}</span>
+    );
+  }
+
+  const filteredCompetitions = competitions.filter(c =>
+    c.title.toLowerCase().includes(search.toLowerCase())
+  );
 
   if (status === 'loading' || isLoading) {
     return (
@@ -128,7 +155,7 @@ export default function EventsPage() {
               )}
 
               {/* Role-specific dropdowns */}
-              {session.user?.role === 'organizer' && (
+              {session.user?.role === 'organizer' && pathname !== '/events' && (
                 <>
                   <AddOrganizationDropdown />
                   <OrganizationSwitcher />
@@ -149,87 +176,96 @@ export default function EventsPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {competitions.map((competition) => (
-            <div
-              key={competition._id}
-              onClick={() => router.push(`/events/${competition._id}`)}
-              className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform transition-transform duration-200 hover:scale-105"
-            >
-              <div className="p-6">
-                {/* Title and Status */}
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {truncateText(competition.title, 50)}
-                  </h2>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      competition.status === 'open'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {competition.status === 'open' ? 'Open' : 'Closed'}
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p className="text-gray-800 mb-4">
-                  {truncateText(competition.description, 50)}
-                  <span className="text-indigo-600 hover:text-indigo-800 font-medium ml-1">Read more...</span>
-                </p>
-
-                {/* Category and Mode */}
-                <div className="flex space-x-4 mb-4">
-                  <span className="text-sm font-medium text-gray-700">
-                    {competition.category}
-                  </span>
-                  <span className="text-sm font-medium text-gray-700 capitalize">
-                    {competition.mode}
-                  </span>
-                  <span className="text-sm font-medium text-gray-700">
-                    {!competition.registrationFee ? 'No Entry Fee' : `${competition.registrationFee} /- rs`}
-                  </span>
-                </div>
-
-                {/* Deadline */}
-                {competition.deadlineToApply && (
-                  <div className="text-sm font-medium text-gray-700 mb-4">
-                    Apply by: {format(new Date(competition.deadlineToApply), 'PPP')}
+        <div className="flex flex-col items-center mb-8">
+          <input
+            type="text"
+            placeholder="Search competitions by title..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
+          />
+        </div>
+        {filteredCompetitions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <svg width="80" height="80" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-gray-300 mb-4">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2 className="text-xl font-semibold text-gray-700 mb-2">No competitions found</h2>
+            <p className="text-gray-500">There are currently no competitions for this organization.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredCompetitions.map((competition) => (
+              <div
+                key={competition._id}
+                onClick={() => router.push(`/events/${competition._id}`)}
+                className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden cursor-pointer transform transition-transform duration-200 hover:scale-105 hover:shadow-2xl flex flex-col h-full"
+              >
+                <div className="p-6 flex flex-col h-full">
+                  {/* Title and Status */}
+                  <div className="flex justify-between items-start mb-3">
+                    <h2 className="text-lg font-bold text-gray-900 leading-tight">
+                      {highlightMatch(truncateText(competition.title, 50), search)}
+                    </h2>
+                    {getCompetitionStatus(competition.startDate, competition.endDate, competition.deadlineToApply)}
                   </div>
-                )}
-
-                {/* Creator Info */}
-                <div className="flex flex-col text-sm text-gray-800 mt-4 pt-4 border-t">
-                  <span className="font-medium">Created by: {competition.organizer.name}</span>
-
-                  <div className="flex items-center mt-1">
-                    {/* Organization Logo */}
+                  {/* Description */}
+                  <p className="text-gray-700 mb-3 text-sm">
+                    {truncateText(competition.description, 70)}
+                    <span className="text-indigo-600 hover:text-indigo-800 font-medium ml-1 underline cursor-pointer">Read more...</span>
+                  </p>
+                  <div className="border-b border-gray-200 my-2" />
+                  {/* Meta Info */}
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-100">
+                      {competition.category}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium border border-gray-200">
+                      {competition.mode}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-xs font-medium border border-yellow-100">
+                      {!competition.registrationFee ? 'No Entry Fee' : `${competition.registrationFee} /- rs`}
+                    </span>
+                  </div>
+                  {competition.deadlineToApply && (
+                    <div className="flex items-center text-xs text-gray-600 mb-2">
+                      <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      <span>Apply by: <span className="font-semibold">{format(new Date(competition.deadlineToApply), 'PPP')}</span></span>
+                    </div>
+                  )}
+                  {/* Organization Info */}
+                  <div className="flex items-center mt-auto pt-4 border-t border-gray-100">
                     {competition.organization?.logo && (
                       <Image
                         src={competition.organization.logo}
                         alt={competition.organization.name}
-                        width={20}
-                        height={20}
-                        className="mr-2 rounded-full"
+                        width={28}
+                        height={28}
+                        className="mr-2 rounded-full border border-gray-200 bg-white"
                         onError={(e) => {
-                          console.error('Error loading organization logo:', e);
-                          // Hide the image on error
                           const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
+                          if (target) target.style.display = 'none';
                         }}
                       />
                     )}
-                    <span>
-                      at <span className="font-medium">{competition.organization.name}</span>
+                    <span className="font-medium text-gray-900 text-sm">
+                      {competition.organization?.name}
                     </span>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+// Default export for /events (all events)
+export default function EventsPage() {
+  const searchParams = useSearchParams();
+  const organizationId = searchParams.get('organizationId') || undefined;
+  console.log(organizationId);
+  return <EventsList organizationId={organizationId} />;
 } 

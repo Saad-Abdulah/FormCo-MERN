@@ -1,7 +1,21 @@
+'use client';
 import Image from "next/image";
 import Link from "next/link";
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.role) {
+      if (session.user.role === 'student') router.replace('/dashboard/student');
+      else if (session.user.role === 'organizer') router.replace('/dashboard/organizer');
+      else if (session.user.role === 'organization') router.replace('/dashboard/organization');
+    }
+  }, [session, status, router]);
+
   const roles = [
     {
       title: "Student",

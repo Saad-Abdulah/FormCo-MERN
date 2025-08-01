@@ -95,3 +95,29 @@ export async function GET(
     }, { status: 500 });
   }
 } 
+
+export async function PATCH(request: NextRequest, { params }: { params: { id: string; application: string } }) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || (session.user.role !== 'organizer' && session.user.role !== 'organization')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    await connectToDatabase();
+    const body = await request.json();
+    const update: any = {};
+    if ('attended' in body) update.attended = body.attended;
+    if ('accepted' in body) update.accepted = body.accepted;
+    const application = await Application.findByIdAndUpdate(
+      params.application,
+      update,
+      { new: true }
+    );
+    if (!application) {
+      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+    }
+    return NextResponse.json({ application });
+  } catch (error: any) {
+    console.error('Error updating application:', error);
+    return NextResponse.json({ error: error.message || 'Failed to update application' }, { status: 500 });
+  }
+} 

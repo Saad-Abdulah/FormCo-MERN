@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     ctx.font = '16px OpenSans, Arial, sans-serif';
     ctx.fillStyle = '#222';
     const line1 = `for ${pronoun} active participation & valuable contribution`;
-    const line2 = `at ${competitionEvent || competitionName} from ${startDate} to ${endDate}`;
+    const line2 = `at ${competitionEvent} from ${startDate} to ${endDate}`;
     const line3 = `at ${organizationName}`;
     let descY = y + 18;
     ctx.fillText(line1, centerX, descY);
@@ -131,32 +131,34 @@ export async function POST(request: NextRequest) {
     ctx.fillText(line2, centerX, descY);
     descY += 22;
     ctx.fillText(line3, centerX, descY);
+    // Add competition name below the achievement description
+    descY += 40;
+    ctx.font = 'bold 24px OpenSans, Arial, sans-serif';
+    ctx.fillStyle = '#4A148C';
+    ctx.fillText(`${competitionName}`, centerX, descY);
 
     // --- Bottom signatures ---
-    const bottomY = canvas.height - 90;
+    const bottomY = canvas.height - 100;
     ctx.textAlign = 'left';
     ctx.font = '16px OpenSans, Arial, sans-serif';
     ctx.fillStyle = '#222';
-    ctx.fillText(organizerName || 'Ms. Sarah Khan', 100, bottomY);
+    ctx.fillText(organizerName || 'Ms. Sarah Khan', 300, bottomY);
     ctx.font = '14px OpenSans, Arial, sans-serif';
-    ctx.fillText(organizerPosition || 'Convener', 100, bottomY + 20);
-    ctx.fillText(competitionEvent || competitionName, 100, bottomY + 40);
+    ctx.fillText(organizerPosition || 'Convener', 300, bottomY + 20);
+    ctx.fillText(competitionEvent , 300, bottomY + 40);
     // Organization logo at bottom center
     try {
       if (orgLogoURL) {
-        const logo = await loadImage(orgLogoURL);
-        const logoSize = 70;
-        ctx.drawImage(logo, centerX - logoSize/2, bottomY - 30, logoSize, logoSize);
+        // If orgLogoURL starts with '/', treat as relative to public/
+        let logoPath = orgLogoURL;
+        if (logoPath.startsWith('/')) {
+          logoPath = path.join(process.cwd(), 'public', logoPath);
+        }
+        const logo = await loadImage(logoPath);
+        const logoSize = 120;
+        ctx.drawImage(logo, centerX - logoSize/2, bottomY - 50, logoSize, logoSize);
       }
     } catch (logoError) {}
-    // Right signature
-    ctx.textAlign = 'right';
-    ctx.font = '16px OpenSans, Arial, sans-serif';
-    ctx.fillStyle = '#222';
-    ctx.fillText('Dr. Waseem Shahzad', canvas.width - 100, bottomY);
-    ctx.font = '14px OpenSans, Arial, sans-serif';
-    ctx.fillText('Campus Director at', canvas.width - 100, bottomY + 20);
-    ctx.fillText(organizationName || 'FAST-NU', canvas.width - 100, bottomY + 40);
 
     // Save certificate as {studentId}_{competitionId}.png
     const generatedDir = path.join(process.cwd(), 'public', 'Certificate-Generator', 'Cer-Generated');

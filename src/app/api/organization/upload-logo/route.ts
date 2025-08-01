@@ -1,56 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { NextResponse } from 'next/server';
+import { join } from 'path';
+import { mkdir, writeFile } from 'fs/promises';
 
-// Multer setup
-const uploadDir = path.join(process.cwd(), 'public', 'Organizations_Logos');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    // Use timestamp + original name for uniqueness
-    const ext = path.extname(file.originalname);
-    const base = path.basename(file.originalname, ext);
-    cb(null, `${base}-${Date.now()}${ext}`);
+export const runtime = 'nodejs';
+
+export async function POST(req: Request) {
+  const formData = await req.formData();
+  const file = formData.get('logo') as File;
+  const orgId = formData.get('organizationId') as string;
+
+  if (!file || !orgId) {
+    return NextResponse.json({ error: 'Logo file and organizationId are required' }, { status: 400 });
   }
-});
-const upload = multer({ storage: storage });
 
-// Helper to run multer in Next.js API route
-function runMiddleware(req, res, fn) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-}
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+  // Ensure directory exists
+  const uploadDir = join(process.cwd(), 'public', 'Org-Logos');
+  await mkdir(uploadDir, { recursive: true });
 
-export async function POST(req) {
-  // This is a workaround for Next.js API routes (Edge/Node)
-  // Only works in Node.js runtime
-  const express = require('express');
-  const app = express();
-  const res = {};
-  await runMiddleware(req, res, upload.single('logo'));
-  const file = req.file;
-  if (!file) {
-    return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
-  }
-  // Return the relative path for storage in DB
-  const relativePath = `/Organizations_Logos/${file.filename}`;
+  // Save as /public/Org-Logos/{orgId}.png
+  const filePath = join(uploadDir, `${orgId}.png`);
+  await writeFile(filePath, buffer);
+
+  const relativePath = `/Org-Logos/${orgId}.png`;
   return NextResponse.json({ path: relativePath });
 } 

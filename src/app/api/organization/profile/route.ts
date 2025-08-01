@@ -40,6 +40,7 @@ export async function PUT(request: NextRequest) {
         website: organization.website,
         logo: organization.logo,
         secretCode: organization.secretCode,
+        createdAt: organization.createdAt,
       }
     });
   } catch (error) {

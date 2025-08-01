@@ -247,6 +247,7 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
+    console.log('=== /api/competitions GET handler called ===');
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
@@ -260,7 +261,11 @@ export async function GET(req: Request) {
     const status = searchParams.get('status');
     const category = searchParams.get('category');
     const mode = searchParams.get('mode');
-
+    const organizationId = searchParams.get('organizationId');
+    
+    console.log("session", session);
+    console.log("organizationId", organizationId);
+    
     // Build query
     const query: any = {};
     
@@ -268,10 +273,12 @@ export async function GET(req: Request) {
     if (category) query.category = category;
     if (mode) query.mode = mode;
 
-    // If user is organization/organizer, only show their competitions
-    if (session.user.organizationId) {
-      query.organization = session.user.organizationId;
+    // If organizationId is provided, filter by it. Otherwise, return all competitions (do not filter by session user's org)
+    if (organizationId && organizationId !== 'undefined' && organizationId !== '') {
+      query.organization = organizationId;
     }
+
+    console.log('Final competitions query:', query);
 
     const competitions = await Competition.find(query)
       .populate('organization', 'name logo')

@@ -7,7 +7,7 @@ import Organization from '@/lib/models/Organization';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'organization') {
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -16,9 +16,22 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    // Find the organization and populate authorized organizers
-    const organization = await Organization.findById(session.user.id)
-      .populate('authorizedOrganizers', 'name email department position isApproved');
+    // Support fetching by id param for all roles
+    const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get('id');
+    let organization;
+    if (orgId) {
+      organization = await Organization.findById(orgId)
+        .populate('authorizedOrganizers', 'name email department position isApproved');
+    } else if (session.user.role === 'organization') {
+      organization = await Organization.findById(session.user.id)
+        .populate('authorizedOrganizers', 'name email department position isApproved');
+    } else {
+      return NextResponse.json(
+        { error: 'Organization id required' },
+        { status: 400 }
+      );
+    }
 
     if (!organization) {
       return NextResponse.json(

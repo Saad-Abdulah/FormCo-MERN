@@ -1,36 +1,131 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FormCO - Platform for Competitions
 
-## Getting Started
+A comprehensive competition management platform built with modern web technologies. FormCO (platFORM for COmpetitions) provides a complete solution for organizations to create, manage, and host competitions while offering students an intuitive platform to discover and participate in various events.
 
-First, run the development server:
+## 🏗️ Code Structure
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+formco-next/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── api/               # API routes
+│   │   │   ├── auth/          # Authentication endpoints
+│   │   │   ├── competitions/  # Competition management
+│   │   │   ├── certificates/  # Certificate generation
+│   │   │   └── organization/  # Organization management
+│   │   ├── auth/              # Authentication pages
+│   │   ├── dashboard/         # Role-based dashboards
+│   │   └── events/            # Event display pages
+│   ├── components/            # Reusable UI components
+│   │   └── ui/               # Base UI components
+│   ├── context/              # React context providers
+│   ├── lib/                  # Utility libraries
+│   │   ├── models/           # MongoDB schemas
+│   │   └── utils/            # Helper functions
+│   └── types/                # TypeScript type definitions
+├── public/                   # Static assets
+│   ├── Certificate-Generator/ # Certificate templates
+│   ├── Org-Logos/            # Organization logos
+│   └── receipts/             # Payment receipts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Frontend
+- **Next.js 15** - React framework with App Router
+- **React 19** - UI library
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Utility-first CSS framework
+- **React Hook Form** - Form management
+- **React Hot Toast** - Notifications
+- **React Icons** - Icon library
+- **Headless UI** - Accessible UI components
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Backend
+- **Next.js API Routes** - Server-side API
+- **MongoDB** - NoSQL database
+- **Mongoose** - MongoDB ODM
+- **NextAuth.js** - Authentication
+- **JWT** - Token-based authentication
+- **bcryptjs** - Password hashing
 
-## Learn More
+### Additional Libraries
+- **Canvas** - Certificate generation
+- **Multer** - File upload handling
+- **Nodemailer** - Email functionality
+- **SendGrid** - Email service
+- **Date-fns** - Date manipulation
 
-To learn more about Next.js, take a look at the following resources:
+## 🗄️ MongoDB Collections
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Organizations** - Organization profiles and settings
+- **Organizers** - Organizer accounts and permissions  
+- **Students** - Student user accounts
+- **Competitions** - Competition details and configurations
+- **Applications** - Student competition applications
+- **TeamRegistrations** - Team-based competition registrations
+- **TeamMembers** - Individual team member details
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 💡 Inspiration
 
-## Deploy on Vercel
+FormCO addresses common competition management challenges:
+- **Fragmented Systems**: Multiple disconnected tools
+- **Manual Processes**: Tedious handling of applications and certificates  
+- **Limited Accessibility**: Poor user interfaces
+- **Scalability Issues**: Difficulty managing multiple competitions
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+A unified solution that streamlines the entire competition lifecycle.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 👥 Roles
+
+### Organization
+Organizations can create competitions, manage organizers, and generate certificates for participants.
+
+### Organizer
+Organizers can create competitions, manage applications, and generate certificates under their organization.
+
+### Student
+Students can browse competitions, submit applications, and download participation certificates.
+
+## ✨ Features
+
+### For Organizations 🏢
+- **Multi-Competition Management**: Create and manage multiple competitions
+- **Brand Customization**: Upload logos and customize branding
+- **Organizer Management**: Add and manage multiple organizers
+- **Application Tracking**: Real-time application status monitoring
+- **Certificate Generation**: Automated certificate creation
+- **Payment Integration**: Secure payment processing
+
+### For Organizers 👨‍💼
+- **Organization Joining**: Easy process to join organizations
+- **Competition Creation**: Create and manage competitions
+- **Application Review**: Streamlined review process
+- **Team Management**: Handle individual and team registrations
+- **Certificate Generation**: Generate certificates for participants
+
+### For Students 🎓
+- **Competition Discovery**: Browse and search competitions
+- **Flexible Registration**: Individual and team applications
+- **Document Upload**: Secure file upload
+- **Payment Processing**: Integrated payment system
+- **Status Tracking**: Real-time status updates
+- **Certificate Access**: Download participation certificates
+
+### Technical Features ⚙️
+- **Responsive Design**: Mobile-first approach
+- **Real-time Updates**: Live notifications
+- **File Management**: Secure upload and storage
+- **Email Integration**: Automated notifications
+- **Security**: JWT authentication
+- **Scalability**: Multi-organization support
+
+## 👨‍💻 Built By
+
+<a href="https://github.com/Saad-Abdulah" target="_blank">🔗 Saad Abdullah</a>
+
+- A passionate developer who envisioned and built FormCO from the ground up.
+
+---
+
+*FormCO - Streamlining competition management for the digital age.*

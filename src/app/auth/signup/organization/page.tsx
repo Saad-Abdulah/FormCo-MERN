@@ -6,6 +6,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { FaCheckCircle, FaTimesCircle, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function OrganizationSignupPage() {
   const router = useRouter();
@@ -16,12 +17,15 @@ export default function OrganizationSignupPage() {
     name: '',
     email: '',
     password: '',
-    confirmPassword: '',
     website: '',
     logo: '',
   });
   const [verificationCode, setVerificationCode] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  // Add campus to formData
+  const [campus, setCampus] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -49,68 +53,71 @@ export default function OrganizationSignupPage() {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+    if (!logoFile) {
+      newErrors.logo = 'Organization logo is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast.error('Logo file size must be less than 5MB');
         return;
       }
-      // Upload to API
-      const formDataObj = new FormData();
-      formDataObj.append('logo', file);
-      try {
-        const res = await fetch('/api/organization/upload-logo', {
-          method: 'POST',
-          body: formDataObj,
-        });
-        const data = await res.json();
-        if (res.ok && data.path) {
-          setFormData(prev => ({ ...prev, logo: data.path }));
-        } else {
-          toast.error(data.error || 'Failed to upload logo');
-        }
-      } catch (err) {
-        toast.error('Failed to upload logo');
-      }
+      setLogoFile(file);
+      // Show preview
+      setFormData(prev => ({ ...prev, logo: URL.createObjectURL(file) }));
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
-
     setIsLoading(true);
-
     try {
+      let nameToSend = formData.name;
+      if (campus.trim()) {
+        nameToSend = `${formData.name} - ${campus.trim()}`;
+      }
+      // 1. Create organization
       const response = await fetch('/api/auth/register/organization', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, name: nameToSend, logo: undefined }),
       });
-
       const data = await response.json();
-
-      if (response.ok) {
-        // Skip email verification for testing - go directly to success
+      if (response.ok && data.organizationId) {
+        let logoPath = '';
+        // 2. If logo file selected, upload logo
+        if (logoFile) {
+          const formDataObj = new FormData();
+          formDataObj.append('logo', logoFile);
+          formDataObj.append('organizationId', data.organizationId);
+          const logoRes = await fetch('/api/organization/upload-logo', {
+            method: 'POST',
+            body: formDataObj,
+          });
+          const logoData = await logoRes.json();
+          if (logoRes.ok && logoData.path) {
+            logoPath = logoData.path;
+          }
+        }
+        // 3. Update org profile with logo path if uploaded
+        if (logoPath) {
+          await fetch('/api/organization/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ logo: logoPath }),
+          });
+        }
         toast.success(`Organization created! Your secret code is: ${data.secretCode}`);
         setTimeout(() => {
           router.push('/auth/signin');
         }, 3000);
-        
-        // Comment out email verification step
-        // setOrganizationId(data.organizationId);
-        // setStep('verify');
-        // toast.success('Verification code sent to your email!');
       } else {
         toast.error(data.error || 'Registration failed');
       }
@@ -181,6 +188,16 @@ export default function OrganizationSignupPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Password validation logic
+  const password = formData.password;
+  const passwordChecks = {
+    lower: /[a-z]/.test(password),
+    upper: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+    length: password.length >= 8,
   };
 
   if (step === 'verify') {
@@ -265,6 +282,13 @@ export default function OrganizationSignupPage() {
             error={errors.name}
             required
           />
+          <Input
+            label="Campus (Optional)"
+            type="text"
+            placeholder="e.g., Islamabad, Lahore, Karachi"
+            value={campus}
+            onChange={e => setCampus(e.target.value)}
+          />
 
           <Input
             label="Official Email"
@@ -287,18 +311,22 @@ export default function OrganizationSignupPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Organization Logo (Optional)
+              Organization Logo
             </label>
             <input
               type="file"
               accept="image/*"
               onChange={handleLogoUpload}
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              required
             />
+            {errors.logo && (
+              <p className="mt-1 text-sm text-red-600">{errors.logo}</p>
+            )}
             {formData.logo && (
               <div className="mt-2">
                 <img
-                  src={formData.logo.startsWith('/Organizations_Logos') ? formData.logo : undefined}
+                  src={formData.logo.startsWith('/Org-Logos') ? formData.logo : formData.logo}
                   alt="Logo preview"
                   className="w-16 h-16 object-contain rounded border"
                 />
@@ -306,25 +334,54 @@ export default function OrganizationSignupPage() {
             )}
           </div>
 
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Create a strong password"
-            value={formData.password}
-            onChange={(e) => handleInputChange('password', e.target.value)}
-            error={errors.password}
-            required
-          />
-
-          <Input
-            label="Confirm Password"
-            type="password"
-            placeholder="Confirm your password"
-            value={formData.confirmPassword}
-            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-            error={errors.confirmPassword}
-            required
-          />
+          {/* Password Field with Eye Icon */}
+          <div className="relative">
+            <Input
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Create a strong password"
+              value={formData.password}
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              error={errors.password}
+              required
+              // style={{ fontSize: '1.0rem', letterSpacing: '0.1em' }}
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+              tabIndex={-1}
+              onClick={() => setShowPassword(v => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{ background: 'none', border: 'none', padding: 0 }}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+          <div className="mt-2 mb-4">
+            <div className="font-semibold text-sm mb-1">Password must contain:</div>
+            <ul className="text-sm space-y-1">
+              <li className="flex items-center gap-2">
+                {passwordChecks.lower ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.lower ? 'text-green-700' : 'text-red-600'}>At least one lowercase letter</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.upper ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.upper ? 'text-green-700' : 'text-red-600'}>At least one uppercase letter</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.number ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.number ? 'text-green-700' : 'text-red-600'}>At least one number</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.special ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.special ? 'text-green-700' : 'text-red-600'}>At least one special character</span>
+              </li>
+              <li className="flex items-center gap-2">
+                {passwordChecks.length ? <FaCheckCircle className="text-green-600" /> : <FaTimesCircle className="text-red-500" />}
+                <span className={passwordChecks.length ? 'text-green-700' : 'text-red-600'}>Minimum 8 characters</span>
+              </li>
+            </ul>
+          </div>
 
           <Button
             type="submit"

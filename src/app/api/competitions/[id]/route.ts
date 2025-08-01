@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import Competition from '@/lib/models/Competition';
 import { connectToDatabase } from '@/lib/database';
+import Application from '@/lib/models/Application';
+import TeamRegistration from '@/lib/models/TeamRegistration';
 
 export async function GET(
   request: Request,
@@ -31,5 +33,28 @@ export async function GET(
     return NextResponse.json({ 
       error: error.message || 'Failed to fetch competition' 
     }, { status: 500 });
+  }
+} 
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || !['organizer', 'organization'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    await connectToDatabase();
+    // Delete all applications for this competition
+    await Application.deleteMany({ competition: params.id });
+    // Delete all team registrations for this competition
+    await TeamRegistration.deleteMany({ competition: params.id });
+    // Delete the competition itself
+    const deleted = await Competition.findByIdAndDelete(params.id);
+    if (!deleted) {
+      return NextResponse.json({ error: 'Competition not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting competition:', error);
+    return NextResponse.json({ error: error.message || 'Failed to delete competition' }, { status: 500 });
   }
 } 

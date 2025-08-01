@@ -88,3 +88,36 @@ export async function PUT(request: NextRequest) {
     );
   }
 } 
+
+export async function PATCH(request: NextRequest) {
+  try {
+    console.log('=== Student Profile PATCH Start ===');
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== 'student') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    await connectToDatabase();
+    const requestBody = await request.json();
+    const { organizationId } = requestBody;
+    if (!organizationId) {
+      return NextResponse.json({ error: 'organizationId is required' }, { status: 400 });
+    }
+    const student = await Student.findByIdAndUpdate(
+      session.user.id,
+      { organizationId },
+      { new: true, runValidators: true }
+    ).populate('organizationId');
+    if (!student) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
+    return NextResponse.json({
+      message: 'Organization updated successfully',
+      user: {
+        name: student.name,
+        organization: student.organizationId,
+      }
+    });
+  } catch (error) {
+    return NextResponse.json({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+  }
+} 

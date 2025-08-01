@@ -224,17 +224,12 @@ export default function AddOrganizationDropdown() {
                   >
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div className="flex-shrink-0">
-                        {org.logo ? (
-                          <img
-                            src={org.logo}
-                            alt={org.name}
-                            className="w-8 h-8 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
-                          </div>
-                        )}
+                        <img
+                          src={`/Org-Logos/${org._id}.png`}
+                          alt={org.name}
+                          className="w-8 h-8 rounded-lg object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-medium text-gray-900 truncate">

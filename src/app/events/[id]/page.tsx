@@ -322,9 +322,9 @@ export default function CompetitionDetail() {
               <span className="font-medium flex items-center gap-2">👤 Created by: {competition.organizer.name}, {competition.organizer.position}</span>
               <span className="mx-2">at</span>
               <div className="flex items-center">
-                {competition.organization.logo && (
+                {competition.organization._id && (
                   <Image
-                    src={competition.organization.logo}
+                    src={`/Org-Logos/${competition.organization._id}.png`}
                     alt={competition.organization.name}
                     width={24}
                     height={24}

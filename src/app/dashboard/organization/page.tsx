@@ -37,21 +37,25 @@ export default function OrganizationDashboard() {
     async function fetchStats() {
       setStatsLoading(true);
       try {
-        // 1. Fetch competitions
-        const compsRes = await fetch('/api/competitions');
+        console.log('Fetching stats for organization:', session?.user?.id);
+        
+        // 1. Fetch competitions for this organization
+        const compsRes = await fetch(`/api/competitions?organizationId=${session?.user?.id || ''}`);
         if (!compsRes.ok) {
           throw new Error(`Failed to fetch competitions: ${compsRes.status}`);
         }
         const compsData = await compsRes.json();
         const competitions = compsData.competitions || [];
+        console.log('Found competitions:', competitions.length);
         
-        // 2. Fetch organizers
-        const orgRes = await fetch('/api/organization/organizers');
+        // 2. Fetch organizers for this organization
+        const orgRes = await fetch(`/api/organization/organizers?id=${session?.user?.id || ''}`);
         if (!orgRes.ok) {
           throw new Error(`Failed to fetch organizers: ${orgRes.status}`);
         }
         const orgData = await orgRes.json();
         const organizers = orgData.organizers || [];
+        console.log('Found organizers:', organizers.length);
         
         // 3. Fetch applicants for each competition
         let applicants = 0;
@@ -62,10 +66,13 @@ export default function OrganizationDashboard() {
                 const appsRes = await fetch(`/api/competitions/${comp._id}/applications`);
                 if (appsRes.ok) {
                   const appsData = await appsRes.json();
-                  return appsData.applications?.length || 0;
+                  const count = appsData.applications?.length || 0;
+                  console.log(`Competition ${comp.title}: ${count} applicants`);
+                  return count;
                 }
                 return 0;
-              } catch {
+              } catch (error) {
+                console.error(`Error fetching applications for competition ${comp._id}:`, error);
                 return 0;
               }
             })
@@ -75,6 +82,7 @@ export default function OrganizationDashboard() {
             .reduce((sum, result) => sum + (result as PromiseFulfilledResult<number>).value, 0);
         }
         
+        console.log('Final stats:', { competitions: competitions.length, applicants, organizers: organizers.length });
         setStats({ competitions: competitions.length, applicants, organizers: organizers.length });
       } catch (e) {
         console.error('Error fetching stats:', e);
@@ -100,14 +108,14 @@ export default function OrganizationDashboard() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              {session.user?.logo && (
+            <div className="flex items-center space-x-2">
+              {/* {session.user?.logo && ( */}
                 <img
-                  src={session.user.logo}
+                  src={`/Org-Logos/${session.user.id}.png`}
                   alt="Organization Logo"
-                  className="w-16 h-16 object-contain rounded border"
+                  className="w-16 h-16 object-contain rounded-full border border-gray-300 p-0.5"
                 />
-              )}
+              {/* )} */}
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Organization Dashboard</h1>
                 <p className="text-sm text-gray-600">Welcome back, {session.user?.name}</p>
@@ -130,25 +138,7 @@ export default function OrganizationDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <FaTrophy className="text-blue-500 w-8 h-8 mb-2" />
-            <h3 className="text-lg font-medium text-gray-900">Competitions</h3>
-            <p className="text-3xl font-bold text-blue-600 mt-2">{statsLoading ? '...' : stats.competitions}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <FaUsers className="text-green-500 w-8 h-8 mb-2" />
-            <h3 className="text-lg font-medium text-gray-900">Applicants</h3>
-            <p className="text-3xl font-bold text-green-600 mt-2">{statsLoading ? '...' : stats.applicants}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <FaUserTie className="text-purple-500 w-8 h-8 mb-2" />
-            <h3 className="text-lg font-medium text-gray-900">Organizers</h3>
-            <p className="text-3xl font-bold text-purple-600 mt-2">{statsLoading ? '...' : stats.organizers}</p>
-          </div>
-        </div>
-        <div className="flex flex-col items-center space-y-3 mb-6">
+      <div className="flex flex-col items-center space-y-3 mb-6">
           <Button 
             onClick={() => router.push('/events')}
             className="bg-blue-600 hover:bg-blue-700 text-white w-48"
@@ -170,6 +160,25 @@ export default function OrganizationDashboard() {
             </Button>
           )}
         </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+            <FaTrophy className="text-blue-500 w-8 h-8 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">Competitions</h3>
+            <p className="text-3xl font-bold text-blue-600 mt-2">{statsLoading ? '...' : stats.competitions}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+            <FaUsers className="text-green-500 w-8 h-8 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">Applicants</h3>
+            <p className="text-3xl font-bold text-green-600 mt-2">{statsLoading ? '...' : stats.applicants}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+            <FaUserTie className="text-purple-500 w-8 h-8 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">Organizers</h3>
+            <p className="text-3xl font-bold text-purple-600 mt-2">{statsLoading ? '...' : stats.organizers}</p>
+          </div>
+        </div>
+        
         {/* Competition list will go here */}
 
 

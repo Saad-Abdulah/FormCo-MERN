@@ -331,7 +331,7 @@ export default function ApplicationsPage() {
           {applications.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
               <div className="text-gray-500 text-lg">No applications received yet</div>
-              <p className="text-gray-400 mt-2">Applications will appear here once students start applying</p>
+              <p className="text-gray-600 mt-2">Applications will appear here once students start applying</p>
             </div>
           ) : (
             applications.map((application, index) => (

@@ -210,8 +210,8 @@ export default function AddOrganizationDropdown() {
             ) : organizations.length === 0 ? (
               <div className="text-center py-8">
                 <BuildingOfficeIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500">No organizations joined yet</p>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-gray-700">No organizations joined yet</p>
+                <p className="text-sm text-gray-600 mt-1">
                   Click the + icon above to join an organization
                 </p>
               </div>
@@ -235,13 +235,13 @@ export default function AddOrganizationDropdown() {
                         <h4 className="text-sm font-medium text-gray-900 truncate">
                           {org.name}
                         </h4>
-                        <p className="text-sm text-gray-500 truncate">{org.email}</p>
+                        <p className="text-sm text-gray-700 truncate">{org.email}</p>
                         {org.website && (
                           <a
                             href={org.website}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:text-blue-800 truncate block"
+                            className="text-xs text-blue-700 hover:text-blue-900 truncate block"
                           >
                             {org.website}
                           </a>
@@ -265,7 +265,7 @@ export default function AddOrganizationDropdown() {
           {/* Footer */}
           {!showAddForm && (
             <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-              <p className="text-xs text-gray-600 text-center">
+              <p className="text-xs text-gray-700 text-center">
                 Get secret codes from organization admins to join
               </p>
             </div>

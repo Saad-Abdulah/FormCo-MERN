@@ -33,7 +33,7 @@ interface Competition {
   };
   organization: {
     name: string;
-    logo?: string;
+    _id: string;
   };
   registrationFee?: number;
 }
@@ -187,7 +187,7 @@ export function EventsList({ organizationId }: { organizationId?: string }) {
         </div>
         {filteredCompetitions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <svg width="80" height="80" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-gray-300 mb-4">
+            <svg width="80" height="80" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-gray-500 mb-4">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <h2 className="text-xl font-semibold text-gray-700 mb-2">No competitions found</h2>
@@ -229,25 +229,25 @@ export function EventsList({ organizationId }: { organizationId?: string }) {
                   </div>
                   {competition.deadlineToApply && (
                     <div className="flex items-center text-xs text-gray-600 mb-2">
-                      <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      <svg className="w-4 h-4 mr-1 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                       <span>Apply by: <span className="font-semibold">{format(new Date(competition.deadlineToApply), 'PPP')}</span></span>
                     </div>
                   )}
                   {/* Organization Info */}
                   <div className="flex items-center mt-auto pt-4 border-t border-gray-100">
-                    {competition.organization?.logo && (
+                    {/* {competition.organization?.id && ( */}
                       <Image
-                        src={competition.organization.logo}
-                        alt={competition.organization.name}
-                        width={28}
-                        height={28}
+                        src={`/Org-Logos/${competition.organization._id}.png`}
+                        alt={competition.organization._id}
+                        width={24}
+                        height={24}
                         className="mr-2 rounded-full border border-gray-200 bg-white"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           if (target) target.style.display = 'none';
                         }}
                       />
-                    )}
+                    {/* )} */}
                     <span className="font-medium text-gray-900 text-sm">
                       {competition.organization?.name}
                     </span>

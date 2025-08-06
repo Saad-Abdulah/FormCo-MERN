@@ -284,17 +284,17 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
           <>
             {session?.user?.phone && (
               <div>
-                <p className="text-sm text-gray-600">Phone</p>
-                <p className="font-medium">{session.user.phone}</p>
+                <p className="text-sm text-gray-700">Phone</p>
+                <p className="font-medium text-gray-800">{session.user.phone}</p>
               </div>
             )}
             <div>
-              <p className="text-sm text-gray-600">Department</p>
-              <p className="font-medium">{session?.user?.department || 'Not specified'}</p>
+              <p className="text-sm text-gray-700">Department</p>
+              <p className="font-medium text-gray-800">{session?.user?.department || 'Not specified'}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Position</p>
-              <p className="font-medium">{session?.user?.position || 'Not specified'}</p>
+              <p className="text-sm text-gray-700">Position</p>
+              <p className="font-medium text-gray-800">{session?.user?.position || 'Not specified'}</p>
             </div>
           </>
         )}

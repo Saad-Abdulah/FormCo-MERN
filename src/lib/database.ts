@@ -6,10 +6,13 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env');
 }
 
-// Mask password for logging
-function maskMongoUri(uri: string) {
-  return uri.replace(/(mongodb(?:\+srv)?:\/\/[^:]+:)[^@]+(@)/, '$1*****$2');
-}
+// // Mask password for logging
+// function maskMongoUri(uri: string) {
+//   return uri.replace(/(mongodb(?:\+srv)?:\/\/[^:]+:)[^@]+(@)/, '$1*****$2');
+// }
+
+// // Local MongoDB URI for database "formco"
+// const LOCAL_MONGODB_URI = 'mongodb://localhost:27017/formco';
 
 /**
  * Global is used here to maintain a cached connection across hot reloads
@@ -30,9 +33,9 @@ export async function connectToDatabase() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      dbName: 'formco', // Explicitly set dbName (optional, since it's in URI)
     };
-    // MONGODB_URI is guaranteed to be a string here
-    console.log('[MongoDB] Connecting to:', maskMongoUri(MONGODB_URI!));
+    console.log('[MongoDB] Connecting to:', MONGODB_URI);
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
       return mongoose;
     });

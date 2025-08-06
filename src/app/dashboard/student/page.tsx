@@ -405,8 +405,8 @@ export default function StudentDashboard() {
                   </div>
                 </div>
                 {/* Registered since at the bottom, centered */}
-                <div className="flex items-center gap-1 text-xs text-gray-400 mt-4 justify-center w-full font-normal">
-                  <CalendarIcon className="w-4 h-4 text-gray-300 inline-block mr-1" />
+                <div className="flex items-center gap-1 text-xs text-gray-600 mt-4 justify-center w-full font-normal">
+                  <CalendarIcon className="w-4 h-4 text-gray-500 inline-block mr-1" />
                   Registered since{' '}
                   <span className="ml-1">
                     {org.createdAt ? new Date(org.createdAt).toLocaleDateString() : '-'}

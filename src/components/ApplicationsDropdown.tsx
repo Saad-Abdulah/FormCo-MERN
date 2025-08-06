@@ -105,10 +105,10 @@ export default function ApplicationsDropdown({ className }: ApplicationsDropdown
                 Loading applications...
               </div>
             ) : applications.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                <DocumentTextIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">No applications yet</p>
-                <p className="text-xs text-gray-400 mt-1">Start applying to competitions to see them here</p>
+              <div className="text-center py-8">
+                <DocumentTextIcon className="h-12 w-12 mx-auto mb-2 text-gray-500" />
+                <p className="text-gray-700">No applications yet</p>
+                <p className="text-xs text-gray-600 mt-1">Start applying to competitions to see them here</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
@@ -152,7 +152,7 @@ export default function ApplicationsDropdown({ className }: ApplicationsDropdown
                         </div>
                       </div>
                       <div className="ml-2 flex-shrink-0">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>

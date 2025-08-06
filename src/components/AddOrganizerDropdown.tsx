@@ -130,10 +130,10 @@ export default function AddOrganizerDropdown({ className }: AddOrganizerDropdown
               </div>
             ) : organizers.length === 0 ? (
               <div className="text-center py-8">
-                <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500">No organizers have joined yet</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Share your secret code with organizers to get started
+                <UserGroupIcon className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+                <p className="text-gray-700">No organizers found</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Organizers will appear here once they join
                 </p>
               </div>
             ) : (
@@ -147,9 +147,9 @@ export default function AddOrganizerDropdown({ className }: AddOrganizerDropdown
                       <h4 className="text-sm font-medium text-gray-900 truncate">
                         {organizer.name}
                       </h4>
-                      <p className="text-sm text-gray-500 truncate">{organizer.email}</p>
+                      <p className="text-sm text-gray-700 truncate">{organizer.email}</p>
                       {(organizer.department || organizer.position) && (
-                        <p className="text-xs text-gray-400 truncate">
+                        <p className="text-xs text-gray-600 truncate">
                           {[organizer.department, organizer.position].filter(Boolean).join(' • ')}
                         </p>
                       )}
@@ -157,7 +157,7 @@ export default function AddOrganizerDropdown({ className }: AddOrganizerDropdown
                     <button
                       onClick={() => handleRemoveOrganizer(organizer._id, organizer.name)}
                       disabled={isLoadingAction === organizer._id}
-                      className="p-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                      className="p-1 text-gray-500 hover:text-red-600 transition-colors disabled:opacity-50"
                       title="Remove organizer"
                     >
                       <TrashIcon className="h-4 w-4" />

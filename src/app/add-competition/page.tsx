@@ -66,7 +66,7 @@ const APPLICATION_FIELDS = [
 
 export default function AddCompetition() {
   const { data: session, status } = useSession();
-  const { currentOrganization } = useOrganization();
+  const { currentOrganization, loading: organizationLoading } = useOrganization();
   const router = useRouter();
   const [customCategory, setCustomCategory] = useState('');
   
@@ -239,11 +239,33 @@ export default function AddCompetition() {
 
   // Redirect if no organization is selected
   useEffect(() => {
-    if (status === 'authenticated' && !currentOrganization) {
-      toast.error('Please select an organization first');
-      router.push('/dashboard/organizer');
+    // Don't redirect while session or organization context is still loading
+    if (status === 'loading' || organizationLoading) return;
+    
+    // Don't redirect if user is not authenticated
+    if (status !== 'authenticated' || !session) return;
+    
+    // For organizers, check if they have an organization
+    if (session.user?.role === 'organizer') {
+      // If user doesn't have an organization in session, redirect
+      if (!session.user?.organizationId) {
+        toast.error('Please select an organization first');
+        router.push('/dashboard/organizer');
+        return;
+      }
+      
+      // If user has organizationId but context hasn't loaded it yet, wait
+      if (session.user?.organizationId && !currentOrganization) {
+        // This should not happen if context is working properly, but just in case
+        return;
+      }
     }
-  }, [status, currentOrganization, router]);
+    
+    // For organizations, they don't need to select an organization
+    if (session.user?.role === 'organization') {
+      return;
+    }
+  }, [status, session, currentOrganization, router, organizationLoading]);
 
   // Handle deadline changes
   const handleDeadlineChange = (value: string) => {
@@ -390,7 +412,7 @@ export default function AddCompetition() {
     }
   };
 
-  if (status === 'loading') {
+  if (status === 'loading' || organizationLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">Loading...</div>
@@ -403,473 +425,467 @@ export default function AddCompetition() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Add New Competition</h1>
-        {currentOrganization && (
-          <p className="text-gray-600">
-            Creating competition for {currentOrganization.name}
-          </p>
-        )}
-      </div>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Create New Competition</h1>
-          
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-700">Basic Information</h2>
-              
-              <div>
-                <Input
-                  label="Title"
-                  {...register('title', { required: 'Title is required' })}
-                  error={errors.title?.message}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  {...register('description', { required: 'Description is required' })}
-                  className="w-full rounded-md border-0 ring-1 ring-inset ring-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-                  rows={4}
-                />
-                {errors.description && (
-                  <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Instructions
-                </label>
-                <textarea
-                  {...register('instructions', { required: 'Instructions are required' })}
-                  className="w-full rounded-md border-0 ring-1 ring-inset ring-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-                  rows={4}
-                />
-                {errors.instructions && (
-                  <p className="mt-1 text-sm text-red-600">{errors.instructions.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Dates */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-700">Important Dates</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input
-                  type="datetime-local"
-                  label="Application Deadline"
-                  {...register('deadlineToApply', { 
-                    required: 'Application deadline is required',
-                    validate: {
-                      futureDate: (value) => {
-                        if (!value) return 'Application deadline is required';
-                        // Allow past dates but show warning in validateDates
-                        return true;
-                      }
-                    },
-                    onChange: (e) => handleDeadlineChange(e.target.value)
-                  })}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    handleDeadlineChange(value);
-                  }}
-                  error={errors.deadlineToApply?.message}
-                />
-                
-                <Input
-                  type="datetime-local"
-                  label="Start Date"
-                  {...register('startDate', { 
-                    required: 'Start date is required',
-                    validate: {
-                      afterDeadline: (value) => {
-                        if (!value) return 'Start date is required';
-                        const isValid = validateDates('startDate', value);
-                        return isValid || 'Start date must be after application deadline';
-                      }
-                    }
-                  })}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value && value.trim()) {
-                      validateDates('startDate', value);
-                    }
-                  }}
-                  error={errors.startDate?.message}
-                />
-                
-                <Input
-                  type="datetime-local"
-                  label="End Date"
-                  {...register('endDate', { 
-                    required: 'End date is required',
-                    validate: {
-                      afterStart: (value) => {
-                        if (!value) return 'End date is required';
-                        const isValid = validateDates('endDate', value);
-                        return isValid || 'End date must be after start date';
-                      }
-                    }
-                  })}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value && value.trim()) {
-                      validateDates('endDate', value);
-                    }
-                  }}
-                  error={errors.endDate?.message}
-                />
-              </div>
-            </div>
-
-            {/* Competition Details */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-700">Competition Details</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <div className="flex gap-2">
-                    <Controller
-                      name="category"
-                      control={control}
-                      rules={{ required: 'Category is required' }}
-                      render={({ field: { value, onChange, ...field } }) => (
-                        <Select
-                          options={CATEGORIES}
-                          placeholder="Select a category"
-                          className="flex-1"
-                          value={value || ''}
-                          onChange={(newValue) => {
-                            onChange(newValue);
-                            if (newValue) {
-                              setCustomCategory('');
-                            }
-                          }}
-                          error={errors.category?.message}
-                          {...field}
-                        />
-                      )}
-                    />
-                    <Input
-                      placeholder="Or enter custom category"
-                      value={customCategory}
-                      onChange={(e) => setCustomCategory(e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Event (Optional)
-                  </label>
-                  <Input
-                    placeholder="e.g., Nascon, Devcon, ..."
-                    {...register('event')}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Controller
-                  name="mode"
-                  control={control}
-                  rules={{ required: 'Mode is required' }}
-                  render={({ field: { value, onChange, ...field } }) => (
-                    <Select
-                      label="Mode"
-                      options={MODES}
-                      value={value || 'online'}
-                      onChange={onChange}
-                      error={errors.mode?.message}
-                      {...field}
-                    />
-                  )}
-                />
-
-                {selectedMode !== 'online' && (
-                  <Input
-                    label="Location"
-                    placeholder="Enter exact location"
-                    {...register('location', { 
-                      required: selectedMode === 'onsite' || selectedMode === 'hybrid' ? 'Location is required for on-site events' : false 
-                    })}
-                    error={errors.location?.message}
-                  />
-                )}
-              </div>
-
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow p-6 border border-gray-300">
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">Create New Competition</h1>
+            
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Basic Information */}
               <div className="space-y-4">
-                <Input
-                  type="number"
-                  label="Registration Fee"
-                  step={500}
-                  min={0}
-                  value={registrationFee}
-                  {...register('registrationFee', { 
-                    min: { 
-                      value: 0, 
-                      message: 'Registration fee cannot be negative' 
-                    }
-                  })}
-                  error={errors.registrationFee?.message}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    setValue('registrationFee', value);
-                  }}
-                />
-
-                {/* Only show payment verification and account details if registration fee > 0 */}
-                {registrationFee > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        {...register('verificationNeeded')}
-                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                      />
-                      <label className="ml-2 text-sm text-gray-700">
-                        Require Receipt(img) and Transaction ID
-                      </label>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h3 className="text-md font-medium text-gray-700">Account Details</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          label="Account Name"
-                          placeholder="Enter account holder name"
-                          {...register('accountDetails.name', {
-                            required: 'Account name is required'
-                          })}
-                        />
-                        <Input
-                          label="Account Number"
-                          placeholder="Enter account number"
-                          {...register('accountDetails.number', {
-                            required: 'Account number is required'
-                          })}
-                        />
-                      </div>
-                      <Input
-                        label="Account Type"
-                        placeholder="e.g., JazzCash, Easypaisa, Bank Name"
-                        {...register('accountDetails.type', {
-                        required: 'Account type is required'
-                        })}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Team Settings */}
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  {...register('isTeamEvent')}
-                  className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                />
-                <label className="ml-2 text-sm text-gray-700">
-                  This is a team event
-                </label>
-              </div>
-
-              {isTeamEvent && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <h2 className="text-lg font-semibold text-gray-700">Basic Information</h2>
+                
+                <div>
                   <Input
-                    type="number"
-                    label="Minimum Team Size"
-                    defaultValue={1}
-                    {...register('teamSize.min', { 
-                      required: isTeamEvent ? 'Minimum team size is required' : false,
-                      min: { 
-                        value: 1, 
-                        message: 'Minimum team size must be at least 1' 
-                      },
-                      onChange: (e) => {
-                        const value = parseInt(e.target.value);
-                        if (teamSizeMax && value > teamSizeMax) {
-                          toast.error('Minimum team size cannot be greater than maximum team size');
-                          e.target.value = teamSizeMax.toString();
+                    label="Title"
+                    {...register('title', { required: 'Title is required' })}
+                    error={errors.title?.message}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    {...register('description', { required: 'Description is required' })}
+                    className="w-full rounded-md border-0 ring-1 ring-inset ring-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                    rows={4}
+                  />
+                  {errors.description && (
+                    <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Instructions
+                  </label>
+                  <textarea
+                    {...register('instructions', { required: 'Instructions are required' })}
+                    className="w-full rounded-md border-0 ring-1 ring-inset ring-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                    rows={4}
+                  />
+                  {errors.instructions && (
+                    <p className="mt-1 text-sm text-red-600">{errors.instructions.message}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-gray-700">Important Dates</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Input
+                    type="datetime-local"
+                    label="Application Deadline"
+                    {...register('deadlineToApply', { 
+                      required: 'Application deadline is required',
+                      validate: {
+                        futureDate: (value) => {
+                          if (!value) return 'Application deadline is required';
+                          // Allow past dates but show warning in validateDates
+                          return true;
                         }
-                        setValue('teamSize.min', value);
                       },
-                      valueAsNumber: true
+                      onChange: (e) => handleDeadlineChange(e.target.value)
                     })}
-                    error={errors.teamSize?.min?.message}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      handleDeadlineChange(value);
+                    }}
+                    error={errors.deadlineToApply?.message}
                   />
                   
                   <Input
-                    type="number"
-                    label="Maximum Team Size"
-                    defaultValue={4}
-                    {...register('teamSize.max', { 
-                      required: isTeamEvent ? 'Maximum team size is required' : false,
-                      min: { 
-                        value: teamSizeMin || 1, 
-                        message: 'Maximum team size must be greater than or equal to minimum team size' 
-                      },
-                      onChange: (e) => {
-                        const value = parseInt(e.target.value);
-                        setValue('teamSize.max', value);
-                      },
-                      validate: (value) => {
-                        if (!isTeamEvent) return true;
-                        if (!value) return 'Maximum team size is required';
-                        return value >= (teamSizeMin || 1) || 'Maximum team size must be greater than or equal to minimum team size';
-                      },
-                      valueAsNumber: true
+                    type="datetime-local"
+                    label="Start Date"
+                    {...register('startDate', { 
+                      required: 'Start date is required',
+                      validate: {
+                        afterDeadline: (value) => {
+                          if (!value) return 'Start date is required';
+                          const isValid = validateDates('startDate', value);
+                          return isValid || 'Start date must be after application deadline';
+                        }
+                      }
                     })}
-                    error={errors.teamSize?.max?.message}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value && value.trim()) {
+                        validateDates('startDate', value);
+                      }
+                    }}
+                    error={errors.startDate?.message}
                   />
-                </div>
-              )}
-            </div>
-
-            {/* Required Fields */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-700">
-                {isTeamEvent ? 'Required Team Member Fields' : 'Required Application Fields'}
-              </h2>
-              
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    value="name"
-                    checked={true}
-                    readOnly
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300 opacity-50"
+                  
+                  <Input
+                    type="datetime-local"
+                    label="End Date"
+                    {...register('endDate', { 
+                      required: 'End date is required',
+                      validate: {
+                        afterStart: (value) => {
+                          if (!value) return 'End date is required';
+                          const isValid = validateDates('endDate', value);
+                          return isValid || 'End date must be after start date';
+                        }
+                      }
+                    })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value && value.trim()) {
+                        validateDates('endDate', value);
+                      }
+                    }}
+                    error={errors.endDate?.message}
                   />
-                  <label className="ml-2 text-sm text-gray-700">
-                    Name (Required)
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    value="email"
-                    checked={true}
-                    readOnly
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300 opacity-50"
-                  />
-                  <label className="ml-2 text-sm text-gray-700">
-                    Email (Required)
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    value="institute"
-                    {...register('requiredApplicationFields')}
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                  />
-                  <label className="ml-2 text-sm text-gray-700">
-                    Institute
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    value="contact"
-                    {...register('requiredApplicationFields')}
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                  />
-                  <label className="ml-2 text-sm text-gray-700">
-                    Contact
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    value="resume"
-                    {...register('requiredApplicationFields')}
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                  />
-                  <label className="ml-2 text-sm text-gray-700">
-                    Resume
-                  </label>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    value="qualification"
-                    {...register('requiredApplicationFields')}
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                  />
-                  <label className="ml-2 text-sm text-gray-700">
-                    Qualification
-                  </label>
                 </div>
               </div>
-              {isTeamEvent && (
-                <p className="text-sm text-gray-500 mt-2">
-                  These fields will be required for each team member.
-                </p>
-              )}
-            </div>
 
-            {/* Skills & Eligibility */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-700">Skills & Eligibility</h2>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Required Skills (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  {...register('skillsRequired')}
-                  className="w-full rounded-md border-0 ring-1 ring-inset ring-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-                  placeholder="e.g., Data Structures, Algorithms, Problem Solving, Python Programming"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Separate each skill with a comma. Each skill will be displayed as a separate bullet point.
-                </p>
+              {/* Competition Details */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-gray-700">Competition Details</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Category
+                    </label>
+                    <div className="flex gap-2">
+                      <Controller
+                        name="category"
+                        control={control}
+                        rules={{ required: 'Category is required' }}
+                        render={({ field: { value, onChange, ...field } }) => (
+                          <Select
+                            options={CATEGORIES}
+                            placeholder="Select a category"
+                            className="flex-1"
+                            value={value || ''}
+                            onChange={(newValue) => {
+                              onChange(newValue);
+                              if (newValue) {
+                                setCustomCategory('');
+                              }
+                            }}
+                            error={errors.category?.message}
+                            {...field}
+                          />
+                        )}
+                      />
+                      <Input
+                        placeholder="Or enter custom category"
+                        value={customCategory}
+                        onChange={(e) => setCustomCategory(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Event (Optional)
+                    </label>
+                    <Input
+                      placeholder="e.g., Nascon, Devcon, ..."
+                      {...register('event')}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Controller
+                    name="mode"
+                    control={control}
+                    rules={{ required: 'Mode is required' }}
+                    render={({ field: { value, onChange, ...field } }) => (
+                      <Select
+                        label="Mode"
+                        options={MODES}
+                        value={value || 'online'}
+                        onChange={onChange}
+                        error={errors.mode?.message}
+                        {...field}
+                      />
+                    )}
+                  />
+
+                  {selectedMode !== 'online' && (
+                    <Input
+                      label="Location"
+                      placeholder="Enter exact location"
+                      {...register('location', { 
+                        required: selectedMode === 'onsite' || selectedMode === 'hybrid' ? 'Location is required for on-site events' : false 
+                      })}
+                      error={errors.location?.message}
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <Input
+                    type="number"
+                    label="Registration Fee"
+                    step={500}
+                    min={0}
+                    value={registrationFee}
+                    {...register('registrationFee', { 
+                      min: { 
+                        value: 0, 
+                        message: 'Registration fee cannot be negative' 
+                      }
+                    })}
+                    error={errors.registrationFee?.message}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
+                      setValue('registrationFee', value);
+                    }}
+                  />
+
+                  {/* Only show payment verification and account details if registration fee > 0 */}
+                  {registrationFee > 0 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          {...register('verificationNeeded')}
+                          className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                        />
+                        <label className="ml-2 text-sm text-gray-700">
+                          Require Receipt(img) and Transaction ID
+                        </label>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-md font-medium text-gray-700">Account Details</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Input
+                            label="Account Name"
+                            placeholder="Enter account holder name"
+                            {...register('accountDetails.name', {
+                              required: 'Account name is required'
+                            })}
+                          />
+                          <Input
+                            label="Account Number"
+                            placeholder="Enter account number"
+                            {...register('accountDetails.number', {
+                              required: 'Account number is required'
+                            })}
+                          />
+                        </div>
+                        <Input
+                          label="Account Type"
+                          placeholder="e.g., JazzCash, Easypaisa, Bank Name"
+                          {...register('accountDetails.type', {
+                          required: 'Account type is required'
+                          })}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Eligibility Criteria
-                </label>
-                <textarea
-                  {...register('eligibility')}
-                  className="w-full rounded-md border-0 ring-1 ring-inset ring-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-                  rows={2}
-                  placeholder="e.g., Only 3rd and 4th year students"
-                />
-              </div>
-            </div>
+              {/* Team Settings */}
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    {...register('isTeamEvent')}
+                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                  />
+                  <label className="ml-2 text-sm text-gray-700">
+                    This is a team event
+                  </label>
+                </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Create Competition
-              </Button>
-            </div>
-          </form>
+                {isTeamEvent && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      type="number"
+                      label="Minimum Team Size"
+                      defaultValue={1}
+                      {...register('teamSize.min', { 
+                        required: isTeamEvent ? 'Minimum team size is required' : false,
+                        min: { 
+                          value: 1, 
+                          message: 'Minimum team size must be at least 1' 
+                        },
+                        onChange: (e) => {
+                          const value = parseInt(e.target.value);
+                          if (teamSizeMax && value > teamSizeMax) {
+                            toast.error('Minimum team size cannot be greater than maximum team size');
+                            e.target.value = teamSizeMax.toString();
+                          }
+                          setValue('teamSize.min', value);
+                        },
+                        valueAsNumber: true
+                      })}
+                      error={errors.teamSize?.min?.message}
+                    />
+                    
+                    <Input
+                      type="number"
+                      label="Maximum Team Size"
+                      defaultValue={4}
+                      {...register('teamSize.max', { 
+                        required: isTeamEvent ? 'Maximum team size is required' : false,
+                        min: { 
+                          value: teamSizeMin || 1, 
+                          message: 'Maximum team size must be greater than or equal to minimum team size' 
+                        },
+                        onChange: (e) => {
+                          const value = parseInt(e.target.value);
+                          setValue('teamSize.max', value);
+                        },
+                        validate: (value) => {
+                          if (!isTeamEvent) return true;
+                          if (!value) return 'Maximum team size is required';
+                          return value >= (teamSizeMin || 1) || 'Maximum team size must be greater than or equal to minimum team size';
+                        },
+                        valueAsNumber: true
+                      })}
+                      error={errors.teamSize?.max?.message}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Required Fields */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-gray-700">
+                  {isTeamEvent ? 'Required Team Member Fields' : 'Required Application Fields'}
+                </h2>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="name"
+                      checked={true}
+                      readOnly
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 opacity-50"
+                    />
+                    <label className="ml-2 text-sm text-gray-700">
+                      Name (Required)
+                    </label>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="email"
+                      checked={true}
+                      readOnly
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 opacity-50"
+                    />
+                    <label className="ml-2 text-sm text-gray-700">
+                      Email (Required)
+                    </label>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="institute"
+                      {...register('requiredApplicationFields')}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                    />
+                    <label className="ml-2 text-sm text-gray-700">
+                      Institute
+                    </label>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="contact"
+                      {...register('requiredApplicationFields')}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                    />
+                    <label className="ml-2 text-sm text-gray-700">
+                      Contact
+                    </label>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="resume"
+                      {...register('requiredApplicationFields')}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                    />
+                    <label className="ml-2 text-sm text-gray-700">
+                      Resume
+                    </label>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      value="qualification"
+                      {...register('requiredApplicationFields')}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                    />
+                    <label className="ml-2 text-sm text-gray-700">
+                      Qualification
+                    </label>
+                  </div>
+                </div>
+                {isTeamEvent && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    These fields will be required for each team member.
+                  </p>
+                )}
+              </div>
+
+              {/* Skills & Eligibility */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-gray-700">Skills & Eligibility</h2>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Required Skills (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    {...register('skillsRequired')}
+                    className="w-full rounded-md border-0 ring-1 ring-inset ring-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                    placeholder="e.g., Data Structures, Algorithms, Problem Solving, Python Programming"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Separate each skill with a comma. Each skill will be displayed as a separate bullet point.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Eligibility Criteria
+                  </label>
+                  <textarea
+                    {...register('eligibility')}
+                    className="w-full rounded-md border-0 ring-1 ring-inset ring-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                    rows={2}
+                    placeholder="e.g., Only 3rd and 4th year students"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Create Competition
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>

@@ -55,14 +55,14 @@ const MODES = [
   { value: 'hybrid', label: 'Hybrid' }
 ];
 
-const APPLICATION_FIELDS = [
-  { value: 'name', label: 'Name' },
-  { value: 'email', label: 'Email' },
-  { value: 'institute', label: 'Institute' },
-  { value: 'contact', label: 'Contact' },
-  { value: 'resume', label: 'Resume' },
-  { value: 'qualification', label: 'Qualification' },
-];
+// const APPLICATION_FIELDS = [
+//   { value: 'name', label: 'Name' },
+//   { value: 'email', label: 'Email' },
+//   { value: 'institute', label: 'Institute' },
+//   { value: 'contact', label: 'Contact' },
+//   { value: 'resume', label: 'Resume' },
+//   { value: 'qualification', label: 'Qualification' },
+// ];
 
 export default function AddCompetition() {
   const { data: session, status } = useSession();
@@ -131,7 +131,7 @@ export default function AddCompetition() {
   }, [isTeamEvent, setValue]);
 
   const selectedMode = watch('mode');
-  const selectedCategory = watch('category');
+  // const selectedCategory = watch('category');
 
   // Watch date fields for validation
   const deadlineToApply = watch('deadlineToApply');
@@ -406,9 +406,13 @@ export default function AddCompetition() {
 
       toast.success('Competition created successfully!');
       router.push('/events');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating competition:', error);
-      toast.error(error.message || 'An unexpected error occurred');
+      toast.error(
+        error instanceof Error 
+          ? error.message 
+          : 'An unexpected error occurred'
+      );
     }
   };
 

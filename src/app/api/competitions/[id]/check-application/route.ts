@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/database';
 import Application from '@/lib/models/Application';
 import Student from '@/lib/models/Student';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -22,6 +22,8 @@ export async function GET(
 
     await connectToDatabase();
 
+    const { id: competitionId } = await params;
+
     // Get the student
     const student = await Student.findById(session.user.id);
     if (!student) {
@@ -30,7 +32,7 @@ export async function GET(
 
     // Check if already applied
     const existingApplication = await Application.findOne({
-      competition: params.id,
+      competition: competitionId,
       student: student._id,
     });
 

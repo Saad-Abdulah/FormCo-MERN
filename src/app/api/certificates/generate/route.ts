@@ -7,7 +7,7 @@ import path from 'path';
 try {
   const fontPath = path.join(process.cwd(), 'public', 'Certificate-Generator', 'fonts', 'OpenSans-Bold.ttf');
   registerFont(fontPath, { family: 'OpenSans' });
-} catch (fontError) {}
+        } catch {}
 
 export async function POST(request: NextRequest) {
   try {
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
     const out = fs.createWriteStream(outPath);
     const stream = canvas.createPNGStream();
     stream.pipe(out);
-    return new Promise((resolve) => {
+    return new Promise<NextResponse>((resolve) => {
       out.on('finish', () => {
         resolve(NextResponse.json({
           success: true,

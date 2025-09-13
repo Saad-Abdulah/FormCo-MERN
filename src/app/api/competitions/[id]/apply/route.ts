@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/database';
 import Competition from '@/lib/models/Competition';
 import Application from '@/lib/models/Application';
@@ -10,7 +10,7 @@ import path from 'path';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,8 +25,10 @@ export async function POST(
 
     await connectToDatabase();
 
+    const { id: competitionId } = await params;
+
     // Get the competition
-    const competition = await Competition.findById(params.id);
+    const competition = await Competition.findById(competitionId);
     if (!competition) {
       return NextResponse.json({ error: 'Competition not found' }, { status: 404 });
     }

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createCanvas } from 'canvas';
 import fs from 'fs';
 import path from 'path';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('Simple certificate test started');
 
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     
     stream.pipe(out);
     
-    return new Promise((resolve) => {
+    return new Promise<NextResponse>((resolve) => {
       out.on('finish', () => {
         console.log('Test certificate saved successfully');
         resolve(NextResponse.json({ 
@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
         }));
       });
       
-      out.on('error', (error) => {
-        console.error('Error writing test certificate:', error);
+      out.on('error', () => {
+        console.error('Error writing test certificate');
         resolve(NextResponse.json(
           { success: false, message: 'Error saving test certificate' },
           { status: 500 }
@@ -61,10 +61,11 @@ export async function GET(request: NextRequest) {
       });
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Simple certificate test error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { success: false, message: `Test failed: ${error?.message || 'Unknown error'}` },
+      { success: false, message: `Test failed: ${errorMessage}` },
       { status: 500 }
     );
   }

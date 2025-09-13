@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/database';
 import Competition from '@/lib/models/Competition';
 import Application from '@/lib/models/Application';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; application: string } }
+  { params }: { params: Promise<{ id: string; application: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -22,8 +22,10 @@ export async function PATCH(
 
     await connectToDatabase();
 
+    const { id: competitionId, application: applicationId } = await params;
+
     // Get the competition and verify access
-    const competition = await Competition.findById(params.id);
+    const competition = await Competition.findById(competitionId);
     if (!competition) {
       return NextResponse.json({ error: 'Competition not found' }, { status: 404 });
     }
@@ -46,7 +48,7 @@ export async function PATCH(
 
     // Update the application's payment verification status
     const application = await Application.findByIdAndUpdate(
-      params.application,
+      applicationId,
       { 
         paymentVerified,
         paymentDate: paymentVerified ? new Date() : undefined
@@ -59,7 +61,7 @@ export async function PATCH(
     }
 
     // Verify the application belongs to this competition
-    if (application.competition.toString() !== params.id) {
+    if (application.competition.toString() !== competitionId) {
       return NextResponse.json({ error: 'Application does not belong to this competition' }, { status: 400 });
     }
 

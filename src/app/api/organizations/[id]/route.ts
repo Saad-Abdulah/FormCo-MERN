@@ -5,7 +5,7 @@ import Organization from '@/lib/models/Organization';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -25,10 +25,12 @@ export async function GET(
       );
     }
 
+    const { id: organizationId } = await params;
+
     // Find organization
     let organization;
     try {
-      organization = await Organization.findById(params.id)
+      organization = await Organization.findById(organizationId)
         .select('name website logo') // Only select necessary fields
         .lean();
     } catch (error) {
@@ -46,7 +48,7 @@ export async function GET(
     // Make sure website field exists even if null
     const sanitizedOrg = {
       ...organization,
-      website: organization.website || null
+      website: (organization as any).website || null
     };
 
     return NextResponse.json({ 

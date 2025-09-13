@@ -204,7 +204,7 @@ export default function ProfileDropdown({ role, className }: ProfileDropdownProp
                 label="Education Level"
                 options={educationLevelOptions}
                 value={editData.educationLevel}
-                onChange={(e) => handleInputChange('educationLevel', e.target.value)}
+                onChange={(value) => handleInputChange('educationLevel', value)}
               />
             </>
           )}

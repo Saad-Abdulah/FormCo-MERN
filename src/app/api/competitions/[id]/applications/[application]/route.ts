@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/database';
 import Competition from '@/lib/models/Competition';
 import Application from '@/lib/models/Application';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; application: string } }
+  { params }: { params: Promise<{ id: string; application: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,8 +23,10 @@ export async function GET(
 
     await connectToDatabase();
 
+    const { id: competitionId, application: applicationId } = await params;
+
     // Get the competition and verify access
-    const competition = await Competition.findById(params.id)
+    const competition = await Competition.findById(competitionId)
       .populate('organization', 'name logo')
       .populate('organizer', 'name position');
     if (!competition) {
@@ -54,7 +56,7 @@ export async function GET(
     */
 
     // Fetch the specific application
-    const application = await Application.findById(params.application)
+    const application = await Application.findById(applicationId)
       .populate('student', 'name email')
       .populate('competition', 'title isTeamEvent registrationFee requiredApplicationFields');
 
@@ -63,7 +65,7 @@ export async function GET(
     }
 
     // Verify the application belongs to this competition
-    if (application.competition._id.toString() !== params.id) {
+    if (application.competition._id.toString() !== competitionId) {
       return NextResponse.json({ error: 'Application does not belong to this competition' }, { status: 400 });
     }
 
@@ -96,19 +98,22 @@ export async function GET(
   }
 } 
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string; application: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string; application: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user || (session.user.role !== 'organizer' && session.user.role !== 'organization')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     await connectToDatabase();
+    
+    const { application: applicationId } = await params;
+    
     const body = await request.json();
     const update: any = {};
     if ('attended' in body) update.attended = body.attended;
     if ('accepted' in body) update.accepted = body.accepted;
     const application = await Application.findByIdAndUpdate(
-      params.application,
+      applicationId,
       update,
       { new: true }
     );

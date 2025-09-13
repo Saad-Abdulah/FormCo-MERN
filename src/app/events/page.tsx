@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Button } from '@/components/ui/Button';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import ApplicationsDropdown from '@/components/ApplicationsDropdown';
@@ -38,7 +38,7 @@ interface Competition {
   registrationFee?: number;
 }
 
-export function EventsList({ organizationId }: { organizationId?: string }) {
+function EventsList({ organizationId }: { organizationId?: string }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -264,6 +264,16 @@ export function EventsList({ organizationId }: { organizationId?: string }) {
 
 // Default export for /events (all events)
 export default function EventsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+    </div>}>
+      <EventsPageContent />
+    </Suspense>
+  );
+}
+
+function EventsPageContent() {
   const searchParams = useSearchParams();
   const organizationId = searchParams.get('organizationId') || undefined;
   console.log(organizationId);

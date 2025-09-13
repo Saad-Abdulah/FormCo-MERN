@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/database';
 import Competition from '@/lib/models/Competition';
 import Application from '@/lib/models/Application';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -24,8 +24,10 @@ export async function GET(
 
     await connectToDatabase();
 
+    const { id: competitionId } = await params;
+
     // Get the competition and verify access
-    const competition = await Competition.findById(params.id)
+    const competition = await Competition.findById(competitionId)
       .populate('organization', 'name logo')
       .populate('organizer', 'name position');
     if (!competition) {

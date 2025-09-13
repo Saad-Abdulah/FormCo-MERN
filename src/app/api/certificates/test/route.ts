@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
     
     stream.pipe(out);
     
-    return new Promise((resolve) => {
+    return new Promise<NextResponse>((resolve) => {
       out.on('finish', () => {
         resolve(NextResponse.json({ 
           success: true, 

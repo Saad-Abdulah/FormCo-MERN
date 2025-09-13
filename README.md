@@ -9,7 +9,7 @@ A comprehensive competition management platform built with modern web technologi
 ```
 formco-next/
 ├── src/
-│   ├── app/                    # Next.js App Router
+│   ├── app/                   # Next.js App Router
 │   │   ├── api/               # API routes
 │   │   │   ├── auth/          # Authentication endpoints
 │   │   │   ├── competitions/  # Competition management
